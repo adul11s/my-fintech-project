@@ -1,5 +1,8 @@
 {
-  "name": "my-fintech-project",
+"name": "@my-fintech-project",
+  "version": "1.0.0",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "private": true,
   "scripts": {
     "build": "turbo run build",
@@ -20,5 +23,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@tanstack/react-query": "^5.96.2",
+    "jose": "^6.2.2",
+    "turbo": "latest"
+  }
 }
