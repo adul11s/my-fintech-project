@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
 
 // Secret key untuk JWT (di dunia nyata, simpan ini di .env)
-const JWT_SECRET = new TextEncoder().encode('rahasia_fintech_super_aman_123');
+const JWT_SECRET = new TextEncoder().encode('fintech-secret-key-2026');
 
 export async function POST(request: Request) {
   try {

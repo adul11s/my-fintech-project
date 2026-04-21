@@ -1,17 +1,32 @@
-// apps/web/next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@my-fintech-project/auth"],
+  transpilePackages: ["@repo/auth", "@repo/ui"],
   async rewrites() {
     return [
       {
-        source: '/dashboard/:path*',
-        destination: 'http://localhost:3001/dashboard/:path*',
+        source: '/docs/:path*',
+        destination: 'http://localhost:3001/docs/:path*',
       },
       {
-        source: '/transactions/:path*',
-        destination: 'http://localhost:3002/transactions/:path*',
+        source: '/dashboard',
+        destination: 'http://localhost:3002/dashboard',
+      },
+      {
+        source: '/dashboard/:path*',
+        destination: 'http://localhost:3002/dashboard/:path*',
+      },
+      {
+        source: '/transaction',
+        destination: 'http://localhost:3003/transaction',
+      },
+      {
+        source: '/transaction/:path*',
+        destination: 'http://localhost:3003/transaction/:path*',
+      },
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:3004/api/:path*',
       },
     ];
   },

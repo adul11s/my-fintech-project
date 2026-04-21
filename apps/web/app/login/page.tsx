@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 // Asumsikan kamu sudah buat packages/auth/index.ts di langkah sebelumnya
-import { login as setAuthCookies } from '@my-fintech-project/auth'; 
+import { login as setAuthCookies } from '@repo/auth';
 
 export default function LoginPage() {
   const router = useRouter();
