@@ -1,0 +1,19 @@
+{
+  "name": "my-fintech-project",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:container": "npm run dev -w apps/container",
+    "dev:accounts": "npm run dev -w apps/accounts",
+    "dev:loans": "npm run dev -w apps/loans",
+    "build:accounts": "npm run build -w apps/accounts",
+    "build:loans": "npm run build -w apps/loans",
+    "build:container": "npm run build -w apps/container",
+    "build": "npm run build:accounts && npm run build:loans && npm run build:container",
+    "lint": "npm run lint -w apps/container && npm run lint -w apps/accounts && npm run lint -w apps/loans"
+  }
+}
