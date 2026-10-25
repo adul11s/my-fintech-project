@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi, type BillInquiry } from "@fintech/api-client";
+import { qupi, makeIntentKey, type BillInquiry } from "@fintech/api-client";
+import { useRef } from "react";
 import { useRequireSession, useSession, appendLedger } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -40,11 +41,13 @@ export default function TagihanPage() {
     setBusy(false);
   };
 
+  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
     if (!inquiry) return;
+    intentRef.current = intentRef.current ?? makeIntentKey();
     try {
       const inqId = (inquiry.id ?? inquiry.inquiryId ?? "") as string;
-      await qupi.billsPay(inqId, source);
+      await qupi.billsPay(inqId, source, pin, intentRef.current);
       appendLedger({ kind: "BILL", title: `Tagihan ${provider} ${inquiry.number}`, amount: inquiry.amount, signed: -1, status: "SUCCESS" });
       setPinOpen(false);
       setReceipt(`Pembayaran ${provider} ${inquiry.number} sebesar ${formatIdr(inquiry.amount)} (${source === "SALDO" ? "Saldo" : "PayLater"}) berhasil`);

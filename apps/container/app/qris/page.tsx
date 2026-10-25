@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button, formatIdr, paylaterTotal } from "@fintech/ui";
-import { qupi } from "@fintech/api-client";
+import { qupi, makeIntentKey } from "@fintech/api-client";
 import { useRequireSession, useSession, appendLedger } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -26,17 +26,17 @@ export default function QrisPage() {
   const totalPaylater = amt > 0 ? paylaterTotal(amt, tenor) : 0;
   const perBulan = amt > 0 ? Math.round(totalPaylater / tenor) : 0;
 
+  const intentRef = useRef<string | null>(null);
+  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
+    // idempotency per intent: satu key untuk seluruh niat bayar QRIS ini
+    intentRef.current = intentRef.current ?? makeIntentKey();
     try {
       const q = await qupi.qrisCreate(amt);
       const qid = ((q as { data?: { id?: string } }).data?.id ?? "") as string;
-      if (source === "PAYLATER") {
-        // checkout paylater sesuai jadwal → lalu settle QRIS dari paylater
-        await qupi.paylaterCheckout(amt, tenor);
-        try { await qupi.qrisPay(qid); } catch { /* settle saldo gagal → anggap paylater langsung */ }
-      } else {
-        await qupi.qrisPay(qid);
-      }
+      // backend menangani BALANCE/PAYLATER dalam SATU operasi (tanpa debit saldo ganda)
+      await qupi.qrisPay(qid, source === "PAYLATER" ? "PAYLATER" : "BALANCE", pin, source === "PAYLATER" ? tenor : undefined, intentRef.current);
+      intentRef.current = null;
     } catch (e) {
       showToast((e as Error).message);
       return;

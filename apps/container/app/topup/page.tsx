@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi } from "@fintech/api-client";
+import { qupi, makeIntentKey } from "@fintech/api-client";
+import { useRef } from "react";
 import { useRequireSession, useSession, appendLedger } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -21,15 +22,19 @@ export default function TopUpPage() {
   const nominal = amount ?? Number(custom || 0);
   const valid = nominal > 0;
 
+  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
+    // idempotency per intent: key dibuat sekali saat niat konfirmasi, dipakai ulang saat retry
+    intentRef.current = intentRef.current ?? makeIntentKey();
     setBusy(true);
     try {
-      await qupi.topup(nominal);
+      await qupi.topup(nominal, pin, intentRef.current);
       appendLedger({ kind: "TOPUP", title: "Top Up", amount: nominal, signed: 1, status: "SUCCESS" });
       setPinOpen(false);
       showToast(`Top up ${formatIdr(nominal)} berhasil`);
       setAmount(null);
       setCustom("");
+      intentRef.current = null;
     } catch (e) {
       showToast((e as Error).message);
     }

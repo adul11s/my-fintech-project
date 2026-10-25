@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi, type PayLaterLineUi, type InstallmentUi } from "@fintech/api-client";
+import { qupi, makeIntentKey, type PayLaterLineUi, type InstallmentUi } from "@fintech/api-client";
+import { useRef } from "react";
 import { useRequireSession, useSession } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -55,7 +56,7 @@ export default function PaylaterPage() {
 
   const bayar = async (id: string, pin: string) => {
     try {
-      await qupi.payInstallment(id);
+      await qupi.payInstallment(id, "123456");
       setInstallments((prev) => prev.filter((i) => i.id !== id));
       setPinOpen(null);
       showToast("Cicilan dibayar");

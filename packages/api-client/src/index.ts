@@ -74,6 +74,9 @@ export function getToken(): string | null {
 export function saveToken(token: string): void { localStorage.setItem(TOKEN_KEY, token); }
 export function clearToken(): void { localStorage.removeItem(TOKEN_KEY); }
 
+/** Buat idempotency key SEKALI per niat transaksi (panggil saat konfirmasi/PIN klik, simpan di ref). */
+export function makeIntentKey(): string { return newKey(); }
+
 function newKey(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -87,12 +90,10 @@ async function request<T>(method: "GET" | "POST" | "PATCH", path: string, body?:
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify({ idempotencyKey: newKey(), ...body }),
+    body: body === undefined ? undefined : JSON.stringify({ ...body, ...(body.idempotencyKey ? {} : { idempotencyKey: newKey() }) }),
   });
-  if (res.status === 401 || res.status === 403) {
-    onUnauthorized?.();
-    throw new ApiError(res.status, "Sesi tidak valid — silakan masuk ulang");
-  }
+  if (res.status === 401) { onUnauthorized?.(); throw new ApiError(res.status, "Sesi habis — silakan masuk ulang"); }
+  if (res.status === 403) { throw new ApiError(res.status, "Akses ditolak (403)"); }
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<T> & { statusCode?: number };
   if (!res.ok) throw new ApiError(res.status, (json.message as string) ?? "Permintaan gagal");
   return json;
@@ -155,10 +156,10 @@ export const qupi = {
 
   // ── wallet (session header) ─────────────────────────────────────────────
   balance: () => request<{ balance: number }>("GET", "/wallet/balance"),
-  topup: (amount: number) => request("POST", "/wallet/topup", { amount }),
+  topup: (amount: number, pin: string, idempotencyKey?: string) => request("POST", "/wallet/topup", { amount, pin, idempotencyKey }),
   txStatus: (tid: string) => request("GET", `/wallet/transactions/${tid}`),
   callback: (tid: string, status: "SUCCESS" | "FAILED") => request("POST", `/wallet/callback/${tid}`, { status }),
-  transfer: (toUserId: string, amount: number) => request("POST", "/wallet/transfer", { toUserId, amount }),
+  transfer: (toUserId: string, amount: number, pin: string, idempotencyKey?: string) => request("POST", "/wallet/transfer", { toUserId, amount, pin, idempotencyKey }),
   history: (filter: { kind?: string; from?: string; to?: string; page?: string; limit?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v) as [string, string][]).toString();
     return request<{ items?: LedgerEntryUiRaw[]; data?: LedgerEntryUiRaw[]; total?: number }>("GET", `/wallet/history${qs ? `?${qs}` : ""}`);
@@ -166,9 +167,9 @@ export const qupi = {
 
   // ── payment ─────────────────────────────────────────────────────────────
   billsInquiry: (provider: string, number: string) => request<BillInquiry>("POST", "/payment/bills/inquiry", { provider, number }),
-  billsPay: (inquiryId: string, method: "BALANCE" | "SALDO" | "PAYLATER") => request("POST", "/payment/bills/pay", { inquiryId, method: method === "SALDO" ? "BALANCE" : method }),
+  billsPay: (inquiryId: string, method: "BALANCE" | "SALDO" | "PAYLATER", pin: string, idempotencyKey?: string) => request("POST", "/payment/bills/pay", { inquiryId, method: method === "SALDO" ? "BALANCE" : method, pin, idempotencyKey }),
   qrisCreate: (amount: number) => request<{ id: string }>("POST", "/payment/qris", { amount }),
-  qrisPay: (id: string) => request("POST", `/payment/qris/${id}/pay`, {}),
+  qrisPay: (id: string, method: "BALANCE" | "PAYLATER", pin: string, tenorMonths?: number, idempotencyKey?: string) => request("POST", `/payment/qris/${id}/pay`, { method, pin, tenorMonths, idempotencyKey }),
 
   // ── credit / paylater ───────────────────────────────────────────────────
   paylaterLimit: () => request<{ limit: number; used: number; available: number; activated: boolean }>("GET", "/credit/paylater/limit"),
@@ -177,7 +178,7 @@ export const qupi = {
     request<{ payLaterTxId: string; totalAmount: number; totalInterest: number }>("POST", "/credit/paylater/checkout", { amount, tenorMonths }),
   paylaterInstallments: () => request<InstallmentUi[]>("GET", "/credit/paylater/installments"),
   paylaterRecap: () => request<{ limit: number; used: number; unpaidTotal: number; dueBeyond30dTotal: number; overdueTotal: number; installmentCount: number }>("GET", "/credit/paylater/recap"),
-  payInstallment: (installmentId: string) => request("POST", `/credit/paylater/installments/${installmentId}/pay`, {}),
+  payInstallment: (installmentId: string, pin: string, idempotencyKey?: string) => request("POST", `/credit/paylater/installments/${installmentId}/pay`, { pin, idempotencyKey }),
 
   // ── kyc (pilot: base64 upload + admin approve manual) ───────────────────
   kycUpload: (contentBase64: string, fileName: string) => request<{ id: string; status: string }>("POST", "/identity/kyc/upload", { contentBase64, fileName }),

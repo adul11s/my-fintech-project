@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button, Keypad, formatIdr } from "@fintech/ui";
-import { qupi } from "@fintech/api-client";
+import { qupi, makeIntentKey } from "@fintech/api-client";
 import { useRequireSession, useSession, appendLedger } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -27,9 +27,10 @@ export default function TransferPage() {
   const amt = Number(amount || 0);
   const valid = !!to && amt > 0;
 
-  const submit = async () => {
+  const submit = async (pin: string) => {
     if (!session) return;
-    const key = `retry-${Date.now()}`;
+    // idempotency per intent: kunci dibuat sekali, dipakai ulang saat retry
+    const key = (intentRef.current = intentRef.current ?? makeIntentKey());
     setIdem(key);
     try {
       // peserta: input可以是 phone atau userId → resolve via lookup
@@ -38,8 +39,10 @@ export default function TransferPage() {
         const look = await qupi.lookupUser(toUser);
         toUser = ((look as { data?: { id?: string } }).data?.id ?? toUser) as string;
       }
-      await qupi.transfer(toUser, amt);
+      await qupi.transfer(toUser, amt, pin, key);
       appendLedger({ kind: "TRANSFER", title: `Transfer ke ${to}`, amount: amt, signed: -1, status: "SUCCESS" });
+      intentRef.current = null;
+      intentRef.current = null;
       setPinOpen(false);
       setDone(`Transfer ${formatIdr(amt)} ke ${to} berhasil. Biaya Rp0.`);
       setTo(""); setAmount("");
