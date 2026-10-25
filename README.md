@@ -27,15 +27,17 @@ as the default.
 
 ```mermaid
 graph TD
-    U[User] --> C
-    subgraph container_3000 [apps/container :3000]
-        C[App Shell — landing, auth, topup,<br>transfer, qris, bills, paylater, history, profile]
-        C --> RW[rewrites() for /wallet/* and /credit/*]
-        RW --> W[apps/wallet :3002]
-        RW --> CR[apps/credit :3003]
+    U["User"] --> C
+    subgraph container_3000["apps/container :3000"]
+        C["App Shell - landing, auth, topup, transfer, qris, tagihan, paylater, riwayat, profil"]
+        C --> RW
+        RW["rewrites: /wallet/* and /credit/* routes"]
+        RW --> W["apps/wallet :3002"]
+        RW --> CR["apps/credit :3003"]
     end
-    C -->|@fintech/api-client<br>x-session-token| B[Backend API :4000/api]
-    W & CR -.transpilePackages.-> P[packages/ui + packages/api-client]
+    C -->|"@fintech/api-client x-session-token"| B["Backend API :4000/api"]
+    W -. "transpilePackages" .-> P["packages/ui + packages/api-client"]
+    CR -. "transpilePackages" .-> P
 ```
 
 Alternative text version (ASCII):
