@@ -1,30 +1,28 @@
 import type { NextConfig } from "next";
 
 /**
- * Container (shell) of the micro-frontend.
- * Unknown paths are proxied to remote zones — the same composition pattern
- * used at scale with Next.js multi-zones:
- *
- *   /accounts/*  ->  REMOTE_ACCOUNTS_URL (default http://localhost:3001)
- *   /loans/*     ->  REMOTE_LOANS_URL    (default http://localhost:3002)
+ * Container (shell) QUPI — zona:
+ *   /auth/*     -> REMOTE_AUTH_URL     (default http://localhost:3001)
+ *   /wallet/*   -> REMOTE_WALLET_URL   (default http://localhost:3002)
+ *   /credit/*   -> REMOTE_CREDIT_URL   (default http://localhost:3003)
+ * Halaman utama QUPI (topup/transfer/qris/tagihan/paylater/riwayat/profil)
+ * berada di container itu sendiri — build sederhana, bukan multi-zone federasi.
  */
-const accountingUrl = process.env.REMOTE_ACCOUNTS_URL ?? "http://localhost:3001";
-const loansUrl = process.env.REMOTE_LOANS_URL ?? "http://localhost:3002";
+const authUrl = process.env.REMOTE_AUTH_URL ?? "http://localhost:3001";
+const walletUrl = process.env.REMOTE_WALLET_URL ?? "http://localhost:3002";
+const creditUrl = process.env.REMOTE_CREDIT_URL ?? "http://localhost:3003";
+
+const zone = (name: string, url: string) => [
+  { source: `/${name}/_next/:path*`, destination: `${url}/_next/:path*` },
+  { source: `/${name}`, destination: `${url}/` },
+  { source: `/${name}/:path*`, destination: `${url}/:path*` },
+];
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  transpilePackages: ["@fintech/ui"],
+  transpilePackages: ["@fintech/ui", "@fintech/api-client"],
   async rewrites() {
-    return [
-      // Zone build assets resolve under the zone path (see assetPrefix in the zones).
-      { source: "/accounts/_next/:path*", destination: `${accountingUrl}/_next/:path*` },
-      { source: "/loans/_next/:path*", destination: `${loansUrl}/_next/:path*` },
-      // Strip the zone prefix before proxying page routes.
-      { source: "/accounts", destination: `${accountingUrl}/` },
-      { source: "/accounts/:path*", destination: `${accountingUrl}/:path*` },
-      { source: "/loans", destination: `${loansUrl}/` },
-      { source: "/loans/:path*", destination: `${loansUrl}/:path*` },
-    ];
+    return [...zone("auth", authUrl), ...zone("wallet", walletUrl), ...zone("credit", creditUrl)];
   },
   turbopack: {
     rules: {

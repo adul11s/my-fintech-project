@@ -7,13 +7,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:container": "npm run dev -w apps/container",
-    "dev:accounts": "npm run dev -w apps/accounts",
-    "dev:loans": "npm run dev -w apps/loans",
-    "build:accounts": "npm run build -w apps/accounts",
-    "build:loans": "npm run build -w apps/loans",
+    "dev": "npm run dev:container",
+    "build:auth": "npm run build -w apps/auth",
+    "build:wallet": "npm run build -w apps/wallet",
+    "build:credit": "npm run build -w apps/credit",
     "build:container": "npm run build -w apps/container",
-    "build": "npm run build:accounts && npm run build:loans && npm run build:container",
-    "lint": "npm run lint -w apps/container && npm run lint -w apps/accounts && npm run lint -w apps/loans"
+    "build": "npm run build:auth && npm run build:wallet && npm run build:credit && npm run build:container",
+    "dev:container": "npm run dev -w apps/container",
+    "dev:auth": "npm run dev -w apps/auth",
+    "dev:wallet": "npm run dev -w apps/wallet",
+    "dev:credit": "npm run dev -w apps/credit"
   }
 }

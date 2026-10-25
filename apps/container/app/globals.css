@@ -1,2 +1,40 @@
 @import "tailwindcss";
 @source "../../../packages/ui/src/**/*.{tsx,ts}";
+
+/* ── QUPI design tokens (dark, violet accent, emerald success, rose danger) ── */
+:root {
+  --qpi-bg: #050714;
+  --qpi-surface: #0b0f24;
+  --qpi-surface-2: #121736;
+  --qpi-border: rgba(255, 255, 255, 0.08);
+  --qpi-accent: #8b5cf6; /* violet-500 */
+  --qpi-accent-strong: #a78bfa;
+  --qpi-success: #10b981; /* emerald-500 */
+  --qpi-danger: #f43f5e; /* rose-500 */
+  --qpi-text: #e2e8f0;
+  --qpi-text-dim: #94a3b8;
+}
+
+@theme inline {
+  --color-qpi-bg: var(--qpi-bg);
+  --color-qpi-surface: var(--qpi-surface);
+  --color-qpi-surface-2: var(--qpi-surface-2);
+  --color-qpi-accent: var(--qpi-accent);
+  --color-qpi-success: var(--qpi-success);
+  --color-qpi-danger: var(--qpi-danger);
+}
+
+html {
+  background-color: var(--qpi-bg);
+}
+
+/* skeleton loading */
+.qpi-skel {
+  background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%);
+  background-size: 200% 100%;
+  animation: qpi-shimmer 1.4s infinite;
+}
+@keyframes qpi-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
