@@ -50,14 +50,14 @@ A screenshot is saved for every step in `docs/screenshots/`.
    **Inquiry** — the amount appears.
 3. **Pay** with the PIN — the bill is settled.
 
-## 6. PayLater (screenshot: `06-paylater.png`)
+## 6. PayLater (screenshot: `07-cicilan.png`)
 
 1. Click **PayLater**.
 2. Review limit, used amount, remaining. **Checkout** an amount, submit the
    PIN.
 3. The 3-month installment plan appears on the same page.
 
-## 7. Pay an installment (screenshot: see `06-paylater.png`)
+## 7. Pay an installment (screenshot: see `07-cicilan.png`)
 
 1. Stay on `/paylater`, pick the fully outstanding plan, pay with the PIN.
 2. The "used" amount drops; the status returns to healthy.
