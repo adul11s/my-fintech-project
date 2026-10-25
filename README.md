@@ -138,7 +138,7 @@ transactions show skeletons or error messages — the app itself stays up.
 
 - `apps/auth` (port 3001) is still in the workspaces but is **unused** in the
   demo flow; local auth lives in `apps/container/app/auth`.
-- 10 non-blocking eslint warnings (hard-reload `window.location` for session
+- 9 non-blocking eslint warnings (hard-reload `window.location` for session
   resets, plus a few small unused variables).
 - No FE unit/E2E tests; all behavior is verified manually via the demo script.
 - No optimistic UI — some pages wait for the backend response before giving

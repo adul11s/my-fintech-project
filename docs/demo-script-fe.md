@@ -50,7 +50,7 @@ A screenshot is saved for every step in `docs/screenshots/`.
    **Inquiry** — the amount appears.
 3. **Pay** with the PIN — the bill is settled.
 
-## 6. PayLater (screenshot: `07-cicilan.png`)
+## 6. PayLater (screenshot: `06-paylater.png`)
 
 1. Click **PayLater**.
 2. Review limit, used amount, remaining. **Checkout** an amount, submit the
