@@ -24,7 +24,7 @@ export default function TopUpPage() {
   const submit = async (pin: string) => {
     setBusy(true);
     try {
-      await qupi.topup(session.userId, nominal);
+      await qupi.topup(nominal);
       appendLedger({ kind: "TOPUP", title: "Top Up", amount: nominal, signed: 1, status: "SUCCESS" });
       setPinOpen(false);
       showToast(`Top up ${formatIdr(nominal)} berhasil`);

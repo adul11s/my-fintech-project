@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatIdr } from "@fintech/ui";
-import { qupi, type LedgerEntryUi } from "@fintech/api-client";
+import { listHistory, type LedgerEntryUi } from "@fintech/api-client";
 import { useRequireSession, getLocalLedger } from "../session";
 
 const PAGE = 10;
+// history API pakai kind ledger: transfer_out/transfer_in, qris, bill, topup, installment
+function historyKind(k: string): string | undefined {
+  const m: Record<string, string> = { TOPUP: "topup", TRANSFER: "transfer_out", QRIS: "qris", BILL: "bill", PAYLATER: "paylater", CICILAN: "installment" };
+  return m[k];
+}
 
 export default function RiwayatPage() {
   const session = useRequireSession();
@@ -19,9 +24,8 @@ export default function RiwayatPage() {
   useEffect(() => {
     if (!session) return;
     // endpoint /wallet/:id/transactions belum tersedia → fallback ledger lokal
-    qupi
-      .listTransactions(session.userId, { kind: kind || undefined, from: from || undefined, to: to || undefined })
-      .then((r) => setItems(r.data?.items ?? []))
+    listHistory({ kind: historyKind(kind), from: from || undefined, to: to || undefined })
+      .then((list) => setItems(list))
       .catch(() => { setItems(null); setServerOff(true); });
   }, [session, kind, from, to]);
 

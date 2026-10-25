@@ -9,6 +9,7 @@ import type { NextConfig } from "next";
  * berada di container itu sendiri — build sederhana, bukan multi-zone federasi.
  */
 const authUrl = process.env.REMOTE_AUTH_URL ?? "http://localhost:3001";
+
 const walletUrl = process.env.REMOTE_WALLET_URL ?? "http://localhost:3002";
 const creditUrl = process.env.REMOTE_CREDIT_URL ?? "http://localhost:3003";
 
@@ -22,7 +23,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   transpilePackages: ["@fintech/ui", "@fintech/api-client"],
   async rewrites() {
-    return [...zone("auth", authUrl), ...zone("wallet", walletUrl), ...zone("credit", creditUrl)];
+    return [...zone("wallet", walletUrl), ...zone("credit", creditUrl)];
   },
   turbopack: {
     rules: {

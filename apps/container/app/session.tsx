@@ -91,11 +91,14 @@ export function useSession(): Ctx {
   return ctx;
 }
 
-/** Pengaman halaman: tanpa sesi → redirect /auth + pesan. */
+/** Pengaman halaman: tanpa sesi → redirect /auth + pesan. Rehidrasi storage dulu sebelum memutuskan. */
 export function useRequireSession(): QupiSession {
-  const { session } = useSession();
+  const { session, setSession } = useSession();
   useEffect(() => {
-    if (!session && typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+    if (session) return;
+    const from = readSession();
+    if (from) { setSession(from); return; }
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
       localStorage.setItem("qupi.logoutReason", "Silakan masuk terlebih dahulu");
       window.location.href = "/auth";
     }

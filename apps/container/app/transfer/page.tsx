@@ -32,7 +32,13 @@ export default function TransferPage() {
     const key = `retry-${Date.now()}`;
     setIdem(key);
     try {
-      await qupi.transfer(session.userId, to, amt);
+      // peserta: input可以是 phone atau userId → resolve via lookup
+      let toUser = to.replace(/[^0-9A-Za-z-]/g, "");
+      if (/^62\d{8,14}$/.test(toUser)) {
+        const look = await qupi.lookupUser(toUser);
+        toUser = ((look as { data?: { id?: string } }).data?.id ?? toUser) as string;
+      }
+      await qupi.transfer(toUser, amt);
       appendLedger({ kind: "TRANSFER", title: `Transfer ke ${to}`, amount: amt, signed: -1, status: "SUCCESS" });
       setPinOpen(false);
       setDone(`Transfer ${formatIdr(amt)} ke ${to} berhasil. Biaya Rp0.`);

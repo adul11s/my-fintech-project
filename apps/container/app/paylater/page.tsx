@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi, type PayLaterLine, type PayLaterInstallment } from "@fintech/api-client";
+import { qupi, type PayLaterLineUi, type InstallmentUi } from "@fintech/api-client";
 import { useRequireSession, useSession } from "../session";
 import { PinPad } from "../pin-pad";
 
@@ -15,28 +15,36 @@ const dendaInfo = (dueAt: string) => {
 export default function PaylaterPage() {
   const session = useRequireSession();
   const { showToast } = useSession();
-  const [line, setLine] = useState<PayLaterLine | null>(null);
+  const [line, setLine] = useState<PayLaterLineUi | null>(null);
   const [limitInput, setLimitInput] = useState("2000000");
-  const [installments, setInstallments] = useState<PayLaterInstallment[]>([]);
+  const [installments, setInstallments] = useState<InstallmentUi[]>([]);
   const [pinOpen, setPinOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!session) return;
-    // endpoint GET line/installments belum tersedia di backend — catch → state lokal
-    setInstallments([]);
+    // ambil kondisi paylater asli dari backend (limit/recap/installments)
+    Promise.all([qupi.paylaterRecap(), qupi.paylaterInstallments()])
+      .then(([rec, inst]) => {
+        const d = (rec.data ?? {}) as { limit: number; used: number };
+        setLine({ id: "local", used: Number(d.used ?? 0), limit: Number(d.limit ?? 0), activated: Number(d.limit ?? 0) > 0 });
+        setInstallments(((inst.data ?? []) as InstallmentUi[]));
+      })
+      .catch(() => setInstallments([]));
   }, [session]);
 
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
-  const sisa = line ? line.limitAmount - line.used : 0;
+  const sisa = (Number(line?.limit ?? 0)) - (Number(line?.used ?? 0));
 
   const ajukan = async (pin: string) => {
     setBusy(true);
     try {
-      const r = await qupi.paylaterActivate(session.userId, Number(limitInput || 0));
-      setLine(r.data ?? null);
-      showToast(`Limit PayLater ${r.data ? formatIdr(Number(limitInput)) : ""} diaktifkan`);
+      await qupi.paylaterActivate();
+      const rec = await qupi.paylaterRecap();
+      const d = (rec.data ?? {}) as { limit: number; used: number };
+      setLine({ id: "local", used: Number(d.used ?? 0), limit: Number(d.limit ?? 0), activated: Number(d.limit ?? 0) > 0 });
+      showToast(`Limit PayLater ${formatIdr(Number(d.limit ?? 0))} diaktifkan`);
       setPinOpen(null);
     } catch (e) {
       showToast((e as Error).message);
@@ -47,7 +55,7 @@ export default function PaylaterPage() {
 
   const bayar = async (id: string, pin: string) => {
     try {
-      await qupi.payInstallment(id, session.userId);
+      await qupi.payInstallment(id);
       setInstallments((prev) => prev.filter((i) => i.id !== id));
       setPinOpen(null);
       showToast("Cicilan dibayar");
@@ -66,7 +74,7 @@ export default function PaylaterPage() {
       {line ? (
         <section className="rounded-2xl border border-white/10 bg-qpi-surface p-4" data-testid="paylater-summary">
           <p className="text-xs text-slate-400">Limit / Terpakai / Sisa</p>
-          <p className="text-xl font-black text-white">{formatIdr(line.limitAmount)} / {formatIdr(line.used)} / <span className="text-emerald-400">{formatIdr(sisa)}</span></p>
+          <p className="text-xl font-black text-white">{formatIdr(Number(line.limit))} / {formatIdr(Number(line.used))} / <span className="text-emerald-400">{formatIdr(sisa)}</span></p>
         </section>
       ) : (
         <section className="rounded-2xl border border-white/10 bg-qpi-surface p-4 text-sm">

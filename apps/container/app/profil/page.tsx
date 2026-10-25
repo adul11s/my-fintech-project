@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi } from "@fintech/api-client";
+import { qupi, API_BASE_URL, getToken } from "@fintech/api-client";
 import { useRequireSession, useSession } from "../session";
 
 export default function ProfilPage() {
@@ -18,8 +18,18 @@ export default function ProfilPage() {
 
   useEffect(() => {
     if (!session) return;
-    qupi.getUser(session.userId).then((r) => setUser(r.data ?? null)).catch(() => setUser(null));
-    qupi.balance(session.userId).then((r) => setBalance(r.data?.balance ?? null)).catch(() => setBalance(null));
+    // sesi: user info via localStorage + saldo via backend (session header)
+    setUser({ id: session.userId, name: session.name });
+    qupi.balance().then((r) => setBalance(((r.data ?? {}) as { balance?: number }).balance ?? null)).catch(() => setBalance(null));
+    // status KYC asli: GET /identity/kyc/documents
+    fetch(`${API_BASE_URL}/identity/kyc/documents`, { headers: { "x-session-token": getToken() ?? "" } })
+      .then((r) => r.json())
+      .then((j) => {
+        const docs = (j.data ?? []) as { status?: string }[];
+        const st = docs[0]?.status as typeof kycStatus | undefined;
+        if (st) setKycStatus(st);
+      })
+      .catch(() => {});
   }, [session]);
 
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
@@ -28,11 +38,12 @@ export default function ProfilPage() {
     setKycStatus("PENDING");
     setUploadLabel("KTP terunggah — menunggu verifikasi");
     try {
-      const res = await qupi.uploadKycDocument(session.userId, f);
-      if (res.ok) showToast("KTP terkirim ke server");
-      else showToast("Endpoint upload belum siap — status disimpan lokal");
-    } catch {
-      showToast("Endpoint upload belum siap — status disimpan lokal");
+      const buf = await f.arrayBuffer();
+      const content = btoa(String.fromCharCode(...new Uint8Array(buf.slice(0, 2_000_000))));
+      await qupi.kycUpload(content, f.name);
+      showToast("KTP terkirim ke server — status PENDING");
+    } catch (e) {
+      showToast((e as Error).message);
     }
     localStorage.setItem(`qupi.kyc.${session.userId}`, "PENDING");
   };

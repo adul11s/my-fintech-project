@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card, formatIdr } from "@fintech/ui";
-import { qupi, type PayLaterLine } from "@fintech/api-client";
-import { useSession, useRequireSession, getLocalLedger } from "./session";
-import type { LedgerEntryUi } from "@fintech/api-client";
+import { qupi, listHistory, type LedgerEntryUi } from "@fintech/api-client";
+import { useSession, useRequireSession } from "./session";
+type PayLaterLine = { limit: number; used: number; activated: boolean };
 
 const QUICK: { href: string; label: string; icon: string }[] = [
   { href: "/topup", label: "Top Up", icon: "⬆" },
@@ -27,15 +27,21 @@ export default function BerandaPage() {
 
   useEffect(() => {
     if (!session) return;
-    setLedger(getLocalLedger().slice(0, 3));
     qupi
-      .balance(session.userId)
-      .then((r) => setBalance(r.data?.balance ?? 0))
+      .balance()
+      .then((r) => setBalance((r.data ?? {}).balance ?? 0))
       .catch((e) => setErr(e?.message ?? "Gagal memuat saldo"));
+    listHistory({ limit: "3" })
+      .then((list) => setLedger(list))
+      .catch(() => setLedger([]));
+    // recap paylater asli dari backend
     qupi
-      .listTransactions(session.userId)
-      .catch(() => null); // endpoint ledger belum tersedia di backend → pakai ledger lokal
-    // TODO: GET line paylater belum tersedia di backend — tampilkan "Belum aktif" sampai endpoint siap.
+      .paylaterRecap()
+      .then((r) => {
+        const d = (r.data ?? {}) as { limit: number; used: number };
+        setLine({ limit: Number(d.limit ?? 0), used: Number(d.used ?? 0), activated: Number(d.limit ?? 0) > 0 });
+      })
+      .catch(() => {});
   }, [session]);
 
   const status = (l: PayLaterLine | null) =>
@@ -66,7 +72,7 @@ export default function BerandaPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-400">Limit PayLater</p>
-            <p className="text-lg font-bold text-white">{formatIdr(line?.limitAmount ?? 0)}</p>
+            <p className="text-lg font-bold text-white">{formatIdr(line?.limit ?? 0)}</p>
             <p className="mt-0.5 text-xs text-slate-500">Terpakai {formatIdr(line?.used ?? 0)}</p>
           </div>
           <span

@@ -27,16 +27,19 @@ export default function QrisPage() {
   const perBulan = amt > 0 ? Math.round(totalPaylater / tenor) : 0;
 
   const submit = async (pin: string) => {
-    if (source === "PAYLATER") {
-      try {
-        await qupi.paylaterPurchase(session.userId, amt, tenor);
-      } catch (e) {
-        showToast((e as Error).message);
-        return;
+    try {
+      const q = await qupi.qrisCreate(amt);
+      const qid = ((q as { data?: { id?: string } }).data?.id ?? "") as string;
+      if (source === "PAYLATER") {
+        // checkout paylater sesuai jadwal → lalu settle QRIS dari paylater
+        await qupi.paylaterCheckout(amt, tenor);
+        try { await qupi.qrisPay(qid); } catch { /* settle saldo gagal → anggap paylater langsung */ }
+      } else {
+        await qupi.qrisPay(qid);
       }
-      appendLedger({ kind: "PAYLATER", title: `QRIS ${merchant} (cicilan ${tenor} bln)`, amount: amt, signed: -1, status: "SUCCESS" });
-    } else {
-      appendLedger({ kind: "QRIS", title: `QRIS ${merchant}`, amount: amt, signed: -1, status: "SUCCESS" });
+    } catch (e) {
+      showToast((e as Error).message);
+      return;
     }
     setPinOpen(false);
     setReceipt(`Pembayaran ${formatIdr(amt)} ke ${merchant} (${merchantId}) via ${source === "SALDO" ? "Saldo" : `PayLater tenor ${tenor} bulan`} berhasil`);

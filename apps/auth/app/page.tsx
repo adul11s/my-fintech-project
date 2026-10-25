@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, Keypad, PinDots } from "@fintech/ui";
-import { qupi } from "@fintech/api-client";
+import { qupi, saveToken } from "@fintech/api-client";
 
 type Step = "phone" | "otp" | "pin";
 
@@ -74,7 +74,8 @@ export default function AuthPage() {
     setBusy(true);
     try {
       await qupi.setPin(userId, digits);
-      await qupi.login(userId, digits);
+      const r = await qupi.login(userId, undefined, digits);
+      saveToken(((r as { data?: { sessionToken?: string } }).data?.sessionToken ?? "") as string);
       localStorage.setItem("qupi.session", JSON.stringify({ userId, name: name || "Sahabat", at: Date.now() }));
       setErr(null);
       setMsg("Masuk berhasil — mengalihkan…");

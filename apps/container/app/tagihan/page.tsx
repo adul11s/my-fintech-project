@@ -43,10 +43,11 @@ export default function TagihanPage() {
   const submit = async (pin: string) => {
     if (!inquiry) return;
     try {
-      await qupi.billsPay(session.userId, provider, inquiry.number, inquiry.billAmount, pin);
-      appendLedger({ kind: "BILL", title: `Tagihan ${provider} ${inquiry.number}`, amount: inquiry.billAmount, signed: -1, status: "SUCCESS" });
+      const inqId = (inquiry.id ?? inquiry.inquiryId ?? "") as string;
+      await qupi.billsPay(inqId, source);
+      appendLedger({ kind: "BILL", title: `Tagihan ${provider} ${inquiry.number}`, amount: inquiry.amount, signed: -1, status: "SUCCESS" });
       setPinOpen(false);
-      setReceipt(`Pembayaran ${provider} ${inquiry.number} sebesar ${formatIdr(inquiry.billAmount)} (${source === "SALDO" ? "Saldo" : "PayLater"}) berhasil`);
+      setReceipt(`Pembayaran ${provider} ${inquiry.number} sebesar ${formatIdr(inquiry.amount)} (${source === "SALDO" ? "Saldo" : "PayLater"}) berhasil`);
       setInquiry(null); setNumber("");
     } catch (e) {
       showToast((e as Error).message);
@@ -88,7 +89,7 @@ export default function TagihanPage() {
         <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm" data-testid="detail-tagihan">
           <div className="flex justify-between"><span className="text-emerald-200/70">Provider</span><span>{inquiry.provider}</span></div>
           <div className="flex justify-between"><span className="text-emerald-200/70">Nomor</span><span>{inquiry.number}</span></div>
-          <div className="mt-1 flex justify-between font-bold"><span>Total</span><span>{formatIdr(inquiry.billAmount)}</span></div>
+          <div className="mt-1 flex justify-between font-bold"><span>Total</span><span>{formatIdr(inquiry.amount)}</span></div>
           <div className="mt-3 flex gap-2">
             <button onClick={() => setSource("SALDO")} className={`flex-1 rounded-lg border px-3 py-2 text-xs ${source === "SALDO" ? "border-violet-400 bg-violet-500/20" : "border-white/15"}`}>Saldo</button>
             <button onClick={() => setSource("PAYLATER")} className={`flex-1 rounded-lg border px-3 py-2 text-xs ${source === "PAYLATER" ? "border-violet-400 bg-violet-500/20" : "border-white/15"}`}>PayLater</button>
@@ -98,7 +99,7 @@ export default function TagihanPage() {
       )}
 
       {receipt && <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300" data-testid="tagihan-receipt">{receipt}</div>}
-      <PinPad open={pinOpen} title={inquiry ? `Masukkan PIN — ${formatIdr(inquiry.billAmount)}` : "Masukkan PIN"} onPin={submit} onClose={() => setPinOpen(false)} />
+      <PinPad open={pinOpen} title={inquiry ? `Masukkan PIN — ${formatIdr(inquiry.amount)}` : "Masukkan PIN"} onPin={submit} onClose={() => setPinOpen(false)} />
     </main>
   );
 }

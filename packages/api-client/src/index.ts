@@ -1,14 +1,13 @@
 /**
- * QUPI API client — fetch-based, typed, sesuai kontrak controllers
- * NestJS di /Users/chairunnisa/projects/qupi-backend/src/{identity,wallet,payment,credit}.
- *
- * baseURL dari NEXT_PUBLIC_API_URL (backend bisa jalan di port lain).
- * Setiap POST transaksi mengirim Idempotency-Key header + idempotencyKey body.
- * 401 → memicu hook onUnauthorized (diisi SessionProvider) → redirect /auth.
+ * QUPI API client — fetch-based, typed, DIKUNCI ke kontrak backend asli
+ * NestJS global prefix /api; SessionGuard: header x-session-token;
+ * idempotency key di body field `idempotencyKey`.
+ * baseURL dari NEXT_PUBLIC_API_URL (default http://localhost:4000/api);
+ * 401 → hook onUnauthorized (SessionProvider) → redirect /auth.
  */
 
 export const API_BASE_URL =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "http://localhost:4000";
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "http://localhost:4000/api";
 
 export type ApiEnvelope<T> = { message?: string; data?: T; [k: string]: unknown };
 
@@ -23,25 +22,83 @@ export interface QupiUser {
 export interface BillInquiry {
   provider: string;
   number: string;
-  billAmount: number;
+  amount: number;
+  id?: string;
+  inquiryId?: string;
+  status?: string;
 }
 
-export interface PayLaterLine {
+export interface PayLaterLineUi {
   id: string;
-  userId: string;
-  limitAmount: number;
+  userId?: string;
+  limit?: number;
+  creditLimit?: number;
   used: number;
   activated: boolean;
 }
 
-export interface PayLaterInstallment {
+export interface InstallmentUi {
   id: string;
   seq: number;
   dueAt: string;
   amount: number;
-  status: "UNPAID" | "PAID";
+  penalty: number;
+  status: "UNPAID" | "PAID" | "LATE";
+  paidAt?: string | null;
 }
 
+export interface LedgerEntryUiRaw {
+  id?: string;
+  kind?: string;
+  amount?: number;
+  counterparty?: string | null;
+  note?: string | null;
+  status?: string;
+  createdAt?: string;
+  created_at?: number;
+}
+
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null): void { onUnauthorized = fn; }
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}
+
+const TOKEN_KEY = "qupi.token";
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function saveToken(token: string): void { localStorage.setItem(TOKEN_KEY, token); }
+export function clearToken(): void { localStorage.removeItem(TOKEN_KEY); }
+
+function newKey(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `idk-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function request<T>(method: "GET" | "POST" | "PATCH", path: string, body?: Record<string, unknown>): Promise<ApiEnvelope<T>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = getToken();
+  if (token) headers["x-session-token"] = token;
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify({ idempotencyKey: newKey(), ...body }),
+  });
+  if (res.status === 401 || res.status === 403) {
+    onUnauthorized?.();
+    throw new ApiError(res.status, "Sesi tidak valid — silakan masuk ulang");
+  }
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<T> & { statusCode?: number };
+  if (!res.ok) throw new ApiError(res.status, (json.message as string) ?? "Permintaan gagal");
+  return json;
+}
+
+// ── ledger UI + mapping dari /wallet/history ────────────────────────────────
 export interface LedgerEntryUi {
   id: string;
   kind: "TOPUP" | "TRANSFER" | "QRIS" | "BILL" | "PAYLATER" | "CICILAN";
@@ -52,103 +109,80 @@ export interface LedgerEntryUi {
   status: "SUCCESS" | "PENDING";
 }
 
-let onUnauthorized: (() => void) | null = null;
-export function setUnauthorizedHandler(fn: (() => void) | null): void {
-  onUnauthorized = fn;
-}
+const KIND_LABEL: Record<string, LedgerEntryUi["kind"]> = {
+  topup: "TOPUP", TOPUP: "TOPUP",
+  transfer_out: "TRANSFER", transfer_in: "TRANSFER", TRANSFER: "TRANSFER",
+  qris: "QRIS", QRIS: "QRIS",
+  bill: "BILL", BILL: "BILL",
+  installment: "CICILAN", CICILAN: "CICILAN",
+  installments: "CICILAN",
+  paylater_purchase: "PAYLATER", paylater: "PAYLATER", PAYLATER: "PAYLATER",
+};
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+function keyOf(h: unknown): string { return (h as { id?: string; kid?: string }).id ?? Math.random().toString(36).slice(2); }
 
-async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (typeof crypto !== "undefined" && crypto.randomUUID) headers["X-Request-Id"] = crypto.randomUUID();
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+export async function listHistory(filter: { kind?: string; from?: string; to?: string; page?: string; limit?: string } = {}): Promise<LedgerEntryUi[]> {
+  const res = await qupi.history(filter);
+  const raw = (((res as { data?: unknown }).data ?? []) as LedgerEntryUiRaw[]);
+  const items = (Array.isArray(raw) ? raw : ((res as { items?: LedgerEntryUiRaw[] }).items ?? []));
+  return items.map((it, idx) => {
+    const createdAt = it.createdAt ?? (it.created_at ? new Date(it.created_at).toISOString() : new Date().toISOString());
+    const amt = Number(it.amount ?? 0);
+    const sign: 1 | -1 = amt < 0 ? -1 : 1;
+    const kind = (KIND_LABEL[(it.kind ?? "").toUpperCase()] ?? KIND_LABEL[(it.kind ?? "").toLowerCase()] ?? "TRANSFER");
+    const cp = it.counterparty ?? it.note ?? kind;
+    return {
+      id: keyOf(it) || `h${idx}`,
+      kind,
+      title: `${kind === "TRANSFER" ? "Transfer" : kind.charAt(0) + kind.slice(1).toLowerCase()}${cp ? ` — ${cp}` : ""}`,
+      amount: Math.abs(amt),
+      signed: sign,
+      at: createdAt,
+      status: (it.status ?? "SUCCESS").toUpperCase() === "PENDING" ? "PENDING" : "SUCCESS",
+    } satisfies LedgerEntryUi;
   });
-  if (res.status === 401 || res.status === 403) {
-    onUnauthorized?.();
-    throw new ApiError(res.status, "Sesi tidak valid — silakan masuk ulang");
-  }
-  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    throw new ApiError(res.status, (json.message as string) ?? `Permintaan gagal (${res.status})`);
-  }
-  return json as T;
 }
 
-/** POST transaksi: header Idempotency-Key + body idempotencyKey (sesuai kontrak wallet).
- */
-async function postTxReal<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const key = typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `idk-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const headers: Record<string, string> = { "Content-Type": "application/json", "Idempotency-Key": key };
-  const res = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
-  if (res.status === 401 || res.status === 403) { onUnauthorized?.(); throw new ApiError(res.status, "Sesi tidak valid — silakan masuk ulang"); }
-  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<T>;
-  if (!res.ok) throw new ApiError(res.status, (json.message as string) ?? `Permintaan gagal (${res.status})`);
-  return json as T;
-}
-
+export const qupiEnd = null;
 export const qupi = {
   // ── identity ────────────────────────────────────────────────────────────
-  register: (phone: string, name: string) =>
-    request<QupiUser>("POST", "/identity/register", { phone, name }).then((r) => r),
-  requestOtp: (id: string, purpose = "LOGIN") =>
-    request<{ message: string; otp?: string }>("POST", `/identity/${id}/otp/request`, { purpose }),
-  verifyOtp: (id: string, code: string, purpose = "LOGIN") =>
-    request<{ success: boolean; message: string }>("POST", `/identity/${id}/otp/verify`, { purpose, code }),
-  setPin: (id: string, pin: string) =>
-    request<{ message: string }>("POST", `/identity/${id}/pin`, { pin }),
-  login: (id: string, pin: string) =>
-    request<{ data: { id: string } }>("POST", `/identity/${id}/login`, { pin }),
-  getUser: (id: string) => request<ApiEnvelope<QupiUser>>("GET", `/identity/${id}`),
+  register: (phone: string, name: string) => request<QupiUser>("POST", "/identity/register", { phone, name }),
+  requestOtp: (userId: string, purpose = "LOGIN") => request<{ otp?: string }>("POST", "/identity/otp/request", { userId, purpose }),
+  verifyOtp: (userId: string, code: string, purpose = "LOGIN") => request<{ success: boolean }>("POST", "/identity/otp/verify", { userId, purpose, code }),
+  setPin: (userId: string, pin: string) => request("POST", "/identity/pin/set", { userId, pin }),
+  login: (userId: string | undefined, phone: string | undefined, pin: string) =>
+    request<{ userId: string; sessionToken: string }>("POST", "/identity/login", userId ? { userId, pin } : { phone, pin }),
 
-  // ── wallet ──────────────────────────────────────────────────────────────
-  balance: (id: string) => request<{ data: { balance: number } }>("GET", `/wallet/${id}/balance`),
-  topup: (id: string, amount: number) => postTxReal<{ message: string }>(`/wallet/${id}/topup`, { amount }),
-  transfer: (id: string, toAccountId: string, amount: number) =>
-    postTxReal<{ message: string }>(`/wallet/${id}/transfer`, { toAccountId, amount }),
+  // ── wallet (session header) ─────────────────────────────────────────────
+  balance: () => request<{ balance: number }>("GET", "/wallet/balance"),
+  topup: (amount: number) => request("POST", "/wallet/topup", { amount }),
+  txStatus: (tid: string) => request("GET", `/wallet/transactions/${tid}`),
+  callback: (tid: string, status: "SUCCESS" | "FAILED") => request("POST", `/wallet/callback/${tid}`, { status }),
+  transfer: (toUserId: string, amount: number) => request("POST", "/wallet/transfer", { toUserId, amount }),
+  history: (filter: { kind?: string; from?: string; to?: string; page?: string; limit?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v) as [string, string][]).toString();
+    return request<{ items?: LedgerEntryUiRaw[]; data?: LedgerEntryUiRaw[]; total?: number }>("GET", `/wallet/history${qs ? `?${qs}` : ""}`);
+  },
 
   // ── payment ─────────────────────────────────────────────────────────────
-  billsInquiry: (provider: string, number: string) =>
-    request<ApiEnvelope<BillInquiry>>("POST", "/payment/bills/inquiry", { provider, number }),
-  billsPay: (userId: string, provider: string, number: string, amount: number, pin?: string) =>
-    postTxReal<{ message?: string }>(`/payment/bills/pay`, { userId, provider, number, amount, pin }),
+  billsInquiry: (provider: string, number: string) => request<BillInquiry>("POST", "/payment/bills/inquiry", { provider, number }),
+  billsPay: (inquiryId: string, method: "BALANCE" | "SALDO" | "PAYLATER") => request("POST", "/payment/bills/pay", { inquiryId, method: method === "SALDO" ? "BALANCE" : method }),
+  qrisCreate: (amount: number) => request<{ id: string }>("POST", "/payment/qris", { amount }),
+  qrisPay: (id: string) => request("POST", `/payment/qris/${id}/pay`, {}),
 
   // ── credit / paylater ───────────────────────────────────────────────────
-  paylaterActivate: (userId: string, limit: number) =>
-    request<{ data: PayLaterLine }>("POST", "/credit/paylater/activate", { userId, limit }),
-  paylaterPurchase: (userId: string, amount: number, tenorMonths: 1 | 3 | 6) =>
-    request<{ message: string; data: { payLaterTxId: string; tenor: number; installments?: PayLaterInstallment[] } }>(
-      "POST", "/credit/paylater/purchase", { userId, amount, tenorMonths },
-    ),
-  payInstallment: (installmentId: string, userId: string) =>
-    request<{ message: string }>("POST", `/credit/installments/${installmentId}/pay`, { userId }),
+  paylaterLimit: () => request<{ limit: number; used: number; available: number; activated: boolean }>("GET", "/credit/paylater/limit"),
+  paylaterActivate: () => request("POST", "/credit/paylater/activate", {}),
+  paylaterCheckout: (amount: number, tenorMonths: number) =>
+    request<{ payLaterTxId: string; totalAmount: number; totalInterest: number }>("POST", "/credit/paylater/checkout", { amount, tenorMonths }),
+  paylaterInstallments: () => request<InstallmentUi[]>("GET", "/credit/paylater/installments"),
+  paylaterRecap: () => request<{ limit: number; used: number; unpaidTotal: number; dueBeyond30dTotal: number; overdueTotal: number; installmentCount: number }>("GET", "/credit/paylater/recap"),
+  payInstallment: (installmentId: string) => request("POST", `/credit/paylater/installments/${installmentId}/pay`, {}),
 
-  // endpoint ledger list belum tersedia di backend saat ini — kontrak disiapkan agar bisa dipasang:
-  listTransactions: (id: string, filter?: { kind?: string; from?: string; to?: string; page?: number }) => {
-    const qs = new URLSearchParams();
-    if (filter?.kind) qs.set("kind", filter.kind);
-    if (filter?.from) qs.set("from", filter.from);
-    if (filter?.to) qs.set("to", filter.to);
-    if (filter?.page) qs.set("page", String(filter.page));
-    const q = qs.toString();
-    return request<ApiEnvelope<{ items: LedgerEntryUi[]; total: number; page: number }>>(
-      "GET", `/wallet/${id}/transactions${q ? `?${q}` : ""}`,
-    );
-  },
-  uploadKycDocument: (id: string, file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return fetch(`${API_BASE_URL}/identity/${id}/documents`, { method: "POST", body: form });
-  },
+  // ── kyc (pilot: base64 upload + admin approve manual) ───────────────────
+  kycUpload: (contentBase64: string, fileName: string) => request<{ id: string; status: string }>("POST", "/identity/kyc/upload", { contentBase64, fileName }),
+  lookupUser: (phone: string) => request<{ id: string; phone: string; name: string }>("GET", `/identity/lookup?phone=${encodeURIComponent(phone)}`),
+  adminDocs: (query = "") => request<unknown[]>("GET", `/admin/kyc/documents${query ? `?${query}` : ""}`),
+  adminUpdate: (docId: string, action: "APPROVE" | "REJECT" | "UPLOAD_AGAIN", rejectionReason?: string) =>
+    request<{ id: string }>("PATCH", `/admin/kyc/documents/${docId}`, { action, rejectionReason }),
 };
