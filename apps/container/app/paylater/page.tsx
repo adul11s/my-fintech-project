@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, formatIdr } from "@fintech/ui";
-import { qupi, makeIntentKey, type PayLaterLineUi, type InstallmentUi } from "@fintech/api-client";
+import { qupi, type PayLaterLineUi, type InstallmentUi } from "@fintech/api-client";
 import { useRef } from "react";
 import { useRequireSession, useSession } from "../session";
 import { PinPad } from "../pin-pad";
@@ -17,7 +17,6 @@ export default function PaylaterPage() {
   const session = useRequireSession();
   const { showToast } = useSession();
   const [line, setLine] = useState<PayLaterLineUi | null>(null);
-  const [limitInput, setLimitInput] = useState("2000000");
   const [installments, setInstallments] = useState<InstallmentUi[]>([]);
   const [pinOpen, setPinOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +40,8 @@ export default function PaylaterPage() {
   const ajukan = async (pin: string) => {
     setBusy(true);
     try {
-      await qupi.paylaterActivate();
+      // PIN dikirim ke backend untuk verifikasi aktivasi
+      await qupi.paylaterActivate(pin);
       const rec = await qupi.paylaterRecap();
       const d = (rec.data ?? {}) as { limit: number; used: number };
       setLine({ id: "local", used: Number(d.used ?? 0), limit: Number(d.limit ?? 0), activated: Number(d.limit ?? 0) > 0 });
@@ -80,13 +80,8 @@ export default function PaylaterPage() {
       ) : (
         <section className="rounded-2xl border border-white/10 bg-qpi-surface p-4 text-sm">
           <p className="mb-2 text-slate-300">Ajukan limit PayLater</p>
-          <input
-            value={limitInput}
-            onChange={(e) => setLimitInput(e.target.value.replace(/\D/g, ""))}
-            inputMode="numeric"
-            className="w-full rounded-lg bg-white/5 px-3 py-2 text-white"
-            placeholder="Limit, mis. 2000000"
-          />
+          {/* Sengaja tanpa input limit: jumlah limit ditentukan backend (gaji terverifikasi × 2,5, plafon 15 jt). */}
+          <p className="text-xs text-slate-500">Limit dihitung otomatis dari penghasilan terverifikasi (maks 2,5× gaji, plafon Rp15 jt).</p>
           <Button className="mt-3 w-full" onClick={() => setPinOpen("activate")}>Aktifkan Limit</Button>
           <p className="mt-2 text-xs text-slate-500">Status belum: none → menunggu KYC band tertinggi.</p>
         </section>

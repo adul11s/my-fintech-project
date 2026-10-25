@@ -6,7 +6,7 @@ import { qupi, makeIntentKey } from "@fintech/api-client";
 import { useRequireSession, useSession, appendLedger } from "../session";
 import { PinPad } from "../pin-pad";
 
-interface Saved { accountId: string; name: string }
+interface Saved { phone: string; name: string }
 
 export default function TransferPage() {
   const session = useRequireSession();
@@ -20,10 +20,11 @@ export default function TransferPage() {
 
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
-  // Penerima tersimpan: disamakan id akun; endpoint daftar penerima belum tersedia di backend.
+  // Penerima tersimpan: cukup nomor HP (62xxx) — display nama; userId fiktif (acct-demo-*) dihapus
+  // karena tidak ada sebagai user di backend (FK 500). Resume: endpoint daftar penerima belum tersedia.
   const saved: Saved[] = [
-    { accountId: session.userId === "acct-demo-1" ? "acct-demo-2" : "acct-demo-1", name: "Budi Santoso" },
-    { accountId: "acct-demo-3", name: "Sari Rahma" },
+    { phone: "6281234567890", name: "Budi Santoso" },
+    { phone: "6289876543210", name: "Sari Rahma" },
   ];
   const amt = Number(amount || 0);
   const valid = !!to && amt > 0;
@@ -34,16 +35,18 @@ export default function TransferPage() {
     const key = (intentRef.current = intentRef.current ?? makeIntentKey());
     setIdem(key);
     try {
-      // peserta: input可以是 phone atau userId → resolve via lookup
-      let toUser = to.replace(/[^0-9A-Za-z-]/g, "");
-      if (/^62\d{8,14}$/.test(toUser)) {
-        const look = await qupi.lookupUser(toUser);
-        toUser = ((look as { data?: { id?: string } }).data?.id ?? toUser) as string;
+      // peserta: input harus nomor HP 62xxx → resolve via lookup; jangan kirim userId fiktif
+      const toPhone = to.replace(/[^\d]/g, "");
+      if (!/^62\d{8,14}$/.test(toPhone)) {
+        showToast("Nomor tujuan harus format HP 62xxx (mis. 62812…)");
+        setPinOpen(false);
+        return;
       }
+      const look = await qupi.lookupUser(toPhone);
+      const toUser = ((look as { data?: { id?: string } }).data?.id ?? toPhone) as string;
       await qupi.transfer(toUser, amt, pin, key);
       appendLedger({ kind: "TRANSFER", title: `Transfer ke ${to}`, amount: amt, signed: -1, status: "SUCCESS" });
-      intentRef.current = null;
-      intentRef.current = null;
+      intentRef.current = null; // jalur sukses: reset — niat berikutnya pakai key baru
       setPinOpen(false);
       setDone(`Transfer ${formatIdr(amt)} ke ${to} berhasil. Biaya Rp0.`);
       setTo(""); setAmount("");
@@ -66,21 +69,23 @@ export default function TransferPage() {
         <div className="flex gap-2 overflow-x-auto">
           {saved.map((s) => (
             <button
-              key={s.accountId}
-              onClick={() => setTo(s.accountId)}
-              className={`shrink-0 rounded-lg border px-3 py-2 text-xs ${to === s.accountId ? "border-violet-400 bg-violet-500/20" : "border-white/10"}`}
+              key={s.phone}
+              onClick={() => setTo(s.phone)}
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs ${to === s.phone ? "border-violet-400 bg-violet-500/20" : "border-white/10"}`}
             >
-              {s.name}
+              <span className="font-medium">{s.name}</span>
+              <span className="ml-1 text-slate-500">{s.phone}</span>
             </button>
           ))}
         </div>
       </section>
       <label className="block text-xs text-slate-400">
-        Email / No HP / ID Akun tujuan
+        No HP tujuan (62xxx)
         <input
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          placeholder="acct-demo-1 / 62812…"
+          inputMode="numeric"
+          placeholder="62812…"
           className="mt-1 w-full rounded-xl bg-qpi-surface px-3 py-2 text-sm text-white"
         />
       </label>

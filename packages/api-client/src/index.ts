@@ -92,9 +92,17 @@ async function request<T>(method: "GET" | "POST" | "PATCH", path: string, body?:
     headers,
     body: body === undefined ? undefined : JSON.stringify({ ...body, ...(body.idempotencyKey ? {} : { idempotencyKey: newKey() }) }),
   });
-  if (res.status === 401) { onUnauthorized?.(); throw new ApiError(res.status, "Sesi habis — silakan masuk ulang"); }
-  if (res.status === 403) { throw new ApiError(res.status, "Akses ditolak (403)"); }
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<T> & { statusCode?: number };
+  if (res.status === 401) {
+    if (path.startsWith("/identity/login")) {
+      // Login gagal (PIN dsb.) adalah error normal, bukan sesi berakhir —
+      // JANGAN panggil onUnauthorized; tampilkan pesan dari server.
+      throw new ApiError(res.status, (json.message as string) ?? "PIN salah atau akun tidak ditemukan");
+    }
+    onUnauthorized?.();
+    throw new ApiError(res.status, "Sesi habis — silakan masuk ulang");
+  }
+  if (res.status === 403) { throw new ApiError(res.status, "Akses ditolak (403)"); }
   if (!res.ok) throw new ApiError(res.status, (json.message as string) ?? "Permintaan gagal");
   return json;
 }
@@ -173,9 +181,9 @@ export const qupi = {
 
   // ── credit / paylater ───────────────────────────────────────────────────
   paylaterLimit: () => request<{ limit: number; used: number; available: number; activated: boolean }>("GET", "/credit/paylater/limit"),
-  paylaterActivate: () => request("POST", "/credit/paylater/activate", {}),
-  paylaterCheckout: (amount: number, tenorMonths: number) =>
-    request<{ payLaterTxId: string; totalAmount: number; totalInterest: number }>("POST", "/credit/paylater/checkout", { amount, tenorMonths }),
+  paylaterActivate: (pin: string) => request("POST", "/credit/paylater/activate", { pin }),
+  paylaterCheckout: (amount: number, tenorMonths: number, pin: string, idempotencyKey?: string) =>
+    request<{ payLaterTxId: string; totalAmount: number; totalInterest: number }>("POST", "/credit/paylater/checkout", { amount, tenorMonths, pin, idempotencyKey }),
   paylaterInstallments: () => request<InstallmentUi[]>("GET", "/credit/paylater/installments"),
   paylaterRecap: () => request<{ limit: number; used: number; unpaidTotal: number; dueBeyond30dTotal: number; overdueTotal: number; installmentCount: number }>("GET", "/credit/paylater/recap"),
   payInstallment: (installmentId: string, pin: string, idempotencyKey?: string) => request("POST", `/credit/paylater/installments/${installmentId}/pay`, { pin, idempotencyKey }),

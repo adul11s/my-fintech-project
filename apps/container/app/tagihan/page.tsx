@@ -50,6 +50,7 @@ export default function TagihanPage() {
       const inqId = (inquiry.id ?? inquiry.inquiryId ?? "") as string;
       await qupi.billsPay(inqId, source, pin, intentRef.current);
       appendLedger({ kind: "BILL", title: `Tagihan ${provider} ${inquiry.number}`, amount: inquiry.amount, signed: -1, status: "SUCCESS" });
+      intentRef.current = null; // niat selesai: pembayaran tagihan berikutnya pakai key baru
       setPinOpen(false);
       setReceipt(`Pembayaran ${provider} ${inquiry.number} sebesar ${formatIdr(inquiry.amount)} (${source === "SALDO" ? "Saldo" : "PayLater"}) berhasil`);
       setInquiry(null); setNumber("");

@@ -35,11 +35,20 @@ export default function ProfilPage() {
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
   const onUpload = async (f: File) => {
+    const OK_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+    if (!OK_TYPES.includes(f.type)) {
+      showToast("Format file harus PDF, JPG, atau PNG");
+      return;
+    }
+    if (f.size > 2 * 1024 * 1024) {
+      showToast(`${f.name} melebihi batas ukuran 2MB`);
+      return;
+    }
     setKycStatus("PENDING");
     setUploadLabel("KTP terunggah — menunggu verifikasi");
     try {
       const buf = await f.arrayBuffer();
-      const content = btoa(String.fromCharCode(...new Uint8Array(buf.slice(0, 2_000_000))));
+      const content = btoa(String.fromCharCode(...new Uint8Array(buf)));
       await qupi.kycUpload(content, f.name);
       showToast("KTP terkirim ke server — status PENDING");
     } catch (e) {
@@ -68,7 +77,7 @@ export default function ProfilPage() {
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void onUpload(f); }}
         />
