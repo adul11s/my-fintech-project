@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSession } from "./session";
 
 /** Top bar QUPI: logo + nav chip — hadir di semua halaman container. */
@@ -25,7 +26,7 @@ export function AppTopBar() {
     <>
       <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3 lg:max-w-6xl">
-          <a href="/" className="text-xl font-black tracking-tight text-violet-400">QUPI</a>
+          <Link href="/" className="text-xl font-black tracking-tight text-violet-400">QUPI</Link>
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
             {authed ? `Halo, ${session?.name ?? "Sahabat"}` : "Belum masuk"}
           </span>

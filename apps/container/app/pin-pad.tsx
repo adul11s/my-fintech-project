@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Keypad, PinDots } from "@fintech/ui";
 
 /** Modal konfirmasi PIN 6 digit (keypad kustom 3x4 + dots). */
@@ -13,10 +13,12 @@ export function PinPad({ open, title, onPin, onClose }: {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
-
-  useEffect(() => {
+  // Reset bidang PIN saat modal dibuka — dihitung saat render, bukan di useEffect.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) { setPin(""); setBusy(false); setErr(false); }
-  }, [open]);
+  }
 
   if (!open) return null;
 

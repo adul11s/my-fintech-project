@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { setUnauthorizedHandler, type LedgerEntryUi } from "@fintech/api-client";
 import type { ReactNode } from "react";
 
@@ -34,16 +34,61 @@ export function readSession(): QupiSession | null {
   }
 }
 
+// ── store localStorage sesi (useSyncExternalStore) ──
+// Snapshot di-cache agar referensi tetap stabil bila storage tidak berubah.
+let snapCache: { raw: string | null; val: QupiSession | null } | null = null;
+function sessionSnapshot(): QupiSession | null {
+  const raw = typeof window === "undefined" ? null : localStorage.getItem(KEY);
+  if (!snapCache || snapCache.raw !== raw) {
+    let val: QupiSession | null = null;
+    if (raw) {
+      try { val = JSON.parse(raw) as QupiSession; } catch { val = null; }
+    }
+    snapCache = { raw, val };
+  }
+  return snapCache.val;
+}
+const listeners = new Set<() => void>();
+function subscribe(l: () => void) {
+  listeners.add(l);
+  window.addEventListener("storage", l);
+  return () => { listeners.delete(l); window.removeEventListener("storage", l); };
+}
+function notify(): void {
+  listeners.forEach((l) => l());
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSess] = useState<QupiSession | null>(null);
+  const session = useSyncExternalStore(subscribe, sessionSnapshot, () => null);
   const [toast, setToast] = useState<string | null>(null);
 
+  const showToast = useCallback((m: string) => {
+    setToast(m);
+    window.setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const setSession = useCallback((s: QupiSession) => {
+    localStorage.setItem(KEY, JSON.stringify(s));
+    notify();
+  }, []);
+
+  const clearSession = useCallback((reason?: "idle") => {
+    localStorage.removeItem(KEY);
+    notify();
+    if (reason === "idle") {
+      localStorage.setItem("qupi.logoutReason", "Sesi berakhir karena 15 menit tidak ada aktivitas");
+      window.location.href = "/auth";
+    } else {
+      localStorage.setItem("qupi.logoutReason", "Anda telah keluar");
+      window.location.href = "/auth";
+    }
+  }, []);
+
   useEffect(() => {
-    setSess(readSession());
     setUnauthorizedHandler(() => {
       clearSession("idle");
     });
-  }, []);
+  }, [clearSession]);
 
   // Aktivitas pengguna memperbarui stamp; idle >15 menit → sesi dilepas saat navigasi berikutnya.
   useEffect(() => {
@@ -54,28 +99,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const evs = ["click", "keydown", "touchstart"] as const;
     evs.forEach((e) => window.addEventListener(e, ping, { passive: true }));
     return () => evs.forEach((e) => window.removeEventListener(e, ping));
-  }, []);
-
-  const showToast = useCallback((m: string) => {
-    setToast(m);
-    window.setTimeout(() => setToast(null), 3500);
-  }, []);
-
-  const setSession = useCallback((s: QupiSession) => {
-    localStorage.setItem(KEY, JSON.stringify(s));
-    setSess(s);
-  }, []);
-
-  const clearSession = useCallback((reason?: "idle") => {
-    localStorage.removeItem(KEY);
-    setSess(null);
-    if (reason === "idle") {
-      localStorage.setItem("qupi.logoutReason", "Sesi berakhir karena 15 menit tidak ada aktivitas");
-      window.location.href = "/auth";
-    } else {
-      localStorage.setItem("qupi.logoutReason", "Anda telah keluar");
-      window.location.href = "/auth";
-    }
   }, []);
 
   const value = useMemo(

@@ -8,18 +8,17 @@ import { useRequireSession, useSession } from "../session";
 export default function ProfilPage() {
   const session = useRequireSession();
   const { showToast } = useSession();
-  const [user, setUser] = useState<{ id: string; name?: string; phone?: string } | null>(null);
   const [kycStatus, setKycStatus] = useState<"PENDING" | "APPROVED" | "REJECTED" | "NONE">("NONE");
   const [balance, setBalance] = useState<number | null>(null);
   const [uploadLabel, setUploadLabel] = useState("Unggah KTP");
   const fileRef = useRef<HTMLInputElement>(null);
+  const user = session; // info user langsung dari sesi — tidak perlu state terpisah
 
   const kyc = typeof window !== "undefined" ? (localStorage.getItem(`qupi.kyc.${session?.userId}`) as typeof kycStatus | null) : null;
 
   useEffect(() => {
     if (!session) return;
-    // sesi: user info via localStorage + saldo via backend (session header)
-    setUser({ id: session.userId, name: session.name });
+    // saldo via backend (session header)
     qupi.balance().then((r) => setBalance(((r.data ?? {}) as { balance?: number }).balance ?? null)).catch(() => setBalance(null));
     // status KYC asli: GET /identity/kyc/documents
     fetch(`${API_BASE_URL}/identity/kyc/documents`, { headers: { "x-session-token": getToken() ?? "" } })
@@ -40,19 +39,33 @@ export default function ProfilPage() {
       showToast("Format file harus PDF, JPG, atau PNG");
       return;
     }
-    if (f.size > 2 * 1024 * 1024) {
-      showToast(`${f.name} melebihi batas ukuran 2MB`);
+    const MAX_KYC = 4 * 1024 * 1024; // 4 MB — jaga di klien sebelum upload
+    if (f.size > MAX_KYC) {
+      showToast("KTP terlalu besar — maksimal 4MB, silakan kompres dulu");
       return;
     }
     setKycStatus("PENDING");
     setUploadLabel("KTP terunggah — menunggu verifikasi");
     try {
-      const buf = await f.arrayBuffer();
-      const content = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      // Base64 chunked: spread seluruh Uint8Array (2MB+) melebihi batas argumen
+      // fungsi dan melempar RangeError, jadi encodeURIComponent per blok 8KB.
+      const buf = new Uint8Array(await f.arrayBuffer());
+      let binary = "";
+      const CHUNK = 8192;
+      for (let i = 0; i < buf.length; i += CHUNK) {
+        binary += String.fromCharCode(...buf.subarray(i, i + CHUNK));
+      }
+      const content = btoa(binary);
       await qupi.kycUpload(content, f.name);
       showToast("KTP terkirim ke server — status PENDING");
     } catch (e) {
-      showToast((e as Error).message);
+      const err = e as Error & { status?: number };
+      if (err.status === 413) {
+        setKycStatus("NONE");
+        showToast("KTP terlalu besar — server menolak (413). Kompres lalu unggah ulang.");
+      } else {
+        showToast(err.message);
+      }
     }
     localStorage.setItem(`qupi.kyc.${session.userId}`, "PENDING");
   };
@@ -62,7 +75,7 @@ export default function ProfilPage() {
       <h1 className="text-lg font-bold">Profil</h1>
       <section className="rounded-2xl border border-white/10 bg-qpi-surface p-4 text-sm">
         <div className="flex justify-between py-1"><span className="text-slate-400">Nama</span><span>{user?.name ?? session.name}</span></div>
-        <div className="flex justify-between py-1"><span className="text-slate-400">No HP</span><span>{user?.phone ?? "—"}</span></div>
+        <div className="flex justify-between py-1"><span className="text-slate-400">No HP</span><span>{"—"}</span></div>
         <div className="flex justify-between py-1"><span className="text-slate-400">Saldo</span><span>{balance === null ? "…" : formatIdr(balance)}</span></div>
         <div className="flex justify-between py-1"><span className="text-slate-400">Sesi berlaku</span><span>15 menit idle</span></div>
       </section>
