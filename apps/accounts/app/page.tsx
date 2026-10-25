@@ -1,4 +1,4 @@
-import { Card, Stat, formatIdr } from "@fintech/ui";
+import { Card, MoneyStat, formatIdr } from "@fintech/ui";
 import { accounts } from "@/lib/mock";
 import Link from "next/link";
 
@@ -20,7 +20,7 @@ export default function AccountsPage() {
         </Link>
       </header>
 
-      <Stat label="Total balance" value={total} hint="All accounts combined" />
+      <MoneyStat label="Total balance" value={total} hint="All accounts combined" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         {accounts.map((a) => (

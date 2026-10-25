@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QUPI Container — Next.js App Shell (multi-zone root)
+
+An English-language app README for the container shell of the QUPI frontend pilot: a standard Next.js App
+Router app served on port **3000**, hosting the shell plus all core QUPI pages, and composing the
+wallet (`:3002`) and credit (`:3003`) zones via `rewrites()` (see the root README). Bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 

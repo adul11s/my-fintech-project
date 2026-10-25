@@ -1,22 +1,16 @@
 import { formatIdr } from "./format";
 
-export function Stat({
-  label,
-  value,
-  hint,
-}: {
+export function MoneyStat({ label, value, hint, tone = "default" }: {
   label: string;
-  /** Numeric IDR value, or any text. */
-  value: number | string;
+  value: number;
   hint?: string;
+  tone?: "default" | "violet";
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-slate-700 bg-slate-900 p-5">
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        {label}
-      </span>
-      <span className="text-xl font-bold tabular-nums text-emerald-400">
-        {typeof value === "number" ? formatIdr(value) : value}
+    <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-[#16161f] p-5">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{label}</span>
+      <span className={`text-2xl font-black tabular-nums ${tone === "violet" ? "text-violet-400" : "text-white"}`}>
+        {formatIdr(value)}
       </span>
       {hint ? <span className="text-xs text-slate-500">{hint}</span> : null}
     </div>

@@ -1,4 +1,4 @@
-import { Card, formatIdr, formatMovement } from "@fintech/ui";
+import { Card, formatIdr, formatSigned } from "@fintech/ui";
 import { movements } from "@/lib/mock";
 import Link from "next/link";
 
@@ -31,7 +31,7 @@ export default function TransactionsPage() {
                 <td className="py-2 text-slate-400">{m.date}</td>
                 <td className="py-2">{m.description}</td>
                 <td className={`py-2 text-right font-semibold ${m.amount < 0 ? "text-rose-400" : "text-emerald-400"}`}>
-                  {formatMovement(m.amount)}
+                  {formatSigned(m.amount)}
                 </td>
               </tr>
             ))}
