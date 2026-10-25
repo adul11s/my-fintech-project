@@ -58,6 +58,15 @@ export default function BerandaPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-5 lg:max-w-3xl">
+      {/* banner sandbox — data demo, bukan uang asli */}
+      <div
+        role="status"
+        data-testid="sandbox-banner"
+        className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-200"
+      >
+        Sandbox / data simulasi
+      </div>
+
       {/* saldo utama */}
       <section className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-qpi-surface to-violet-950/60 p-5" data-testid="kartu-saldo">
         <p className="text-xs text-slate-400">Saldo {session.name}</p>
