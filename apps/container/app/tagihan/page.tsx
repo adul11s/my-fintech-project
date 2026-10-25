@@ -24,6 +24,8 @@ export default function TagihanPage() {
   const [receipt, setReceipt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const intentRef = useRef<string | null>(null);
+
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
   const mulai = async (p: string) => {
@@ -41,7 +43,6 @@ export default function TagihanPage() {
     setBusy(false);
   };
 
-  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
     if (!inquiry) return;
     intentRef.current = intentRef.current ?? makeIntentKey();

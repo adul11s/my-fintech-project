@@ -20,13 +20,14 @@ export default function QrisPage() {
   const [pinOpen, setPinOpen] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
 
+  const intentRef = useRef<string | null>(null);
+
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
   const amt = Number(amount || 0);
   const totalPaylater = amt > 0 ? paylaterTotal(amt, tenor) : 0;
   const perBulan = amt > 0 ? Math.round(totalPaylater / tenor) : 0;
 
-  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
     // idempotency per intent: satu key untuk seluruh niat bayar QRIS ini
     intentRef.current = intentRef.current ?? makeIntentKey();

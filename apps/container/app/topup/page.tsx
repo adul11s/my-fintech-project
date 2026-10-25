@@ -16,13 +16,12 @@ export default function TopUpPage() {
   const [custom, setCustom] = useState("");
   const [pinOpen, setPinOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const intentRef = useRef<string | null>(null);
 
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 
   const nominal = amount ?? Number(custom || 0);
   const valid = nominal > 0;
-
-  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
     // idempotency per intent: key dibuat sekali saat niat konfirmasi, dipakai ulang saat retry
     intentRef.current = intentRef.current ?? makeIntentKey();
