@@ -16,6 +16,7 @@ export default function TransferPage() {
   const [pinOpen, setPinOpen] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [idem, setIdem] = useState<string | null>(null);
+  const intentRef = useRef<string | null>(null);
 
   if (!session) return <main className="mx-auto max-w-md px-4 py-8"><div className="qpi-skel h-40 rounded-2xl" /></main>;
 

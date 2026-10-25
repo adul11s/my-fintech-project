@@ -56,7 +56,7 @@ export default function PaylaterPage() {
 
   const bayar = async (id: string, pin: string) => {
     try {
-      await qupi.payInstallment(id, "123456");
+      await qupi.payInstallment(id, pin);
       setInstallments((prev) => prev.filter((i) => i.id !== id));
       setPinOpen(null);
       showToast("Cicilan dibayar");

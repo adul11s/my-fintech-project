@@ -27,7 +27,6 @@ export default function QrisPage() {
   const perBulan = amt > 0 ? Math.round(totalPaylater / tenor) : 0;
 
   const intentRef = useRef<string | null>(null);
-  const intentRef = useRef<string | null>(null);
   const submit = async (pin: string) => {
     // idempotency per intent: satu key untuk seluruh niat bayar QRIS ini
     intentRef.current = intentRef.current ?? makeIntentKey();
