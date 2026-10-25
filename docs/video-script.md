@@ -1,4 +1,4 @@
-# Video Script — my-fintech-project UI (90 detik)
+# Video Script — qupi-apps UI (90 detik)
 
 **Format:** rekuran layar 1080p, 90 detik. Fokus UI; endpoint dikenalkan pada backend video terpisah (QUPI Backend).
 **Setup:** backend :4000 hidup, container :3000, wallet :3002, credit :3003 (zombie zone tak perlu).
