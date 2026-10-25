@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 # QUPI — Fintech Pilot Frontend (Next.js Multi-Zone)
 [![CI](https://github.com/adul11s/my-fintech-project/actions/workflows/ci.yml/badge.svg)](https://github.com/adul11s/my-fintech-project/actions/workflows/ci.yml)
+=======
+# QUPI Apps — QUick Payment Instrument · Fintech Pilot Frontend (Next.js Multi-Zone)
+[![CI](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml)
+>>>>>>> revamp
 
 The **QUPI** frontend pilot (a portfolio project, not a go-live product):
 a Next.js App Router application using a **multi-zone micro-frontend**
