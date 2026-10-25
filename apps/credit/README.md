@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QUPI Credit Zone — Next.js (multi-zone child)
+
+An English-language app README for the credit child zone of the QUPI frontend pilot: a standard Next.js App
+Router app served on port **3003** and composed into the container shell via
+`rewrites()` on `/credit/*` (see the root README). Bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
@@ -14,7 +18,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3003](http://localhost:3003) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

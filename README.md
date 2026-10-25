@@ -1,25 +1,27 @@
-# QUPI — Frontend Pilot Fintech (Next.js Multi-Zone)
+# QUPI — Fintech Pilot Frontend (Next.js Multi-Zone)
 
-Frontend pilot **QUPI** (portfolio, bukan produk go-live): Next.js App Router
-dengan pola **multi-zone micro-frontend** — satu container shell yang
-menyusun zona child via `rewrites()`, tanpa federasi runtime.
+The **QUPI** frontend pilot (a portfolio project, not a go-live product):
+a Next.js App Router application using a **multi-zone micro-frontend**
+pattern — one container shell that composes child zones via `rewrites()`,
+with no runtime federation.
 
-> ⚠️ **Sandbox / data simulasi.** Seluruh data di aplikasi ini adalah data
-> demo yang dihasilkan backend stub (provider simulasi), bukan layanan
-> finansial nyata. Banner "Sandbox / data simulasi" tampil permanen di
-> halaman beranda.
+> ⚠️ **Sandbox / simulated data.** All data in this application is demo data
+> produced by a backend stub (a mock service provider), not a real financial
+> service. A permanent "Sandbox / simulated data" banner is shown on the
+> home page.
 
-## Struktur zona (yang benar-benar ada di repo)
+## Zone structure (what actually exists in this repo)
 
-| App              | Port saat dev | Route di shell      | Isi                                                        |
-|------------------|---------------|---------------------|------------------------------------------------------------|
-| `apps/container` | **3000**      | `/`                 | Shell, navigasi, dan seluruh halaman inti QUPI: auth (`app/auth`), topup, transfer, qris, tagihan, paylater, riwayat, profil |
-| `apps/wallet`    | **3002**      | `/wallet/*`         | Zona child wallet (disusun via rewrites)                    |
-| `apps/credit`    | **3003**      | `/credit/*`         | Zona child credit (disusun via rewrites)                    |
-| `apps/auth`      | 3001          | —                   | **Tidak dipakai** di alur demo (auth lokal ada di container); tetap ada sebagai app, tidak direwrites |
+| App              | Dev port | Route in shell  | Contents                                                    |
+|------------------|----------|-----------------|-------------------------------------------------------------|
+| `apps/container` | **3000** | `/`             | App shell, navigation, and all core QUPI pages: auth (`app/auth`), top-up, transfer, QRIS, bills, paylater, history, profile |
+| `apps/wallet`    | **3002** | `/wallet/*`     | Wallet child zone (composed via rewrites)                    |
+| `apps/credit`    | **3003** | `/credit/*`     | Credit child zone (composed via rewrites)                    |
+| `apps/auth`      | 3001     | —               | **Unused** in the demo flow (local auth lives in the container); it remains as an app and is not rewritten |
 
-Backend API dijalankan terpisah (repo backend) di `http://localhost:4000`,
-default `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
+The backend API runs separately (see the backend repository) at
+`http://localhost:4000`, with `NEXT_PUBLIC_API_URL=http://localhost:4000/api`
+as the default.
 
 ### Zoning diagram
 
@@ -27,8 +29,8 @@ default `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
 graph TD
     U[User] --> C
     subgraph container_3000 [apps/container :3000]
-        C[App Shell — landing, auth, topup,<br>transfer, qris, tagihan, paylater, riwayat, profil]
-        C --> RW[rewrites() /wallet/* dan /credit/*]
+        C[App Shell — landing, auth, topup,<br>transfer, qris, bills, paylater, history, profile]
+        C --> RW[rewrites() for /wallet/* and /credit/*]
         RW --> W[apps/wallet :3002]
         RW --> CR[apps/credit :3003]
     end
@@ -36,57 +38,59 @@ graph TD
     W & CR -.transpilePackages.-> P[packages/ui + packages/api-client]
 ```
 
-Teks alternatif (ASCII):
+Alternative text version (ASCII):
 
 ```
             Browser (:3000)
                  │
     ┌────────────▼─────────────┐
-    │  apps/container   :3000  │─ app/auth, topup, transfer,
-    │  shell + halaman inti    │  qris, tagihan, paylater,
-    │                          │  riwayat, profil
+    │  apps/container   :3000  │─ auth, top-up, transfer,
+    │  shell + core pages      │  QRIS, bills, paylater,
+    │                          │  history, profile
     │  rewrites():             │
     │    /wallet/*  → :3002    │────────► apps/wallet :3002
     │    /credit/*  → :3003    │────────► apps/credit :3003
     └───────┬──────────────────┘
             │ fetch (NEXT_PUBLIC_API_URL, default :4000/api)
             ▼
-       Backend API :4000  (repo backend terpisah, NestJS)
+       Backend API :4000  (separate backend repo, NestJS)
 ```
 
-## Kontrak `packages/api-client`
+## The `packages/api-client` contract
 
-- `@fintech/api-client` adalah satu-satunya jalur akses HTTP ke backend.
-- `API_BASE_URL` diambil dari `NEXT_PUBLIC_API_URL` (default
-  `http://localhost:4000/api`); NestJS memakai global prefix `/api`.
-- Format respons: envelope `{ message?, data?, ... }`; client membukanya
-  dengan tipe id-API, error dibaca dari `e?.message`.
-- Autentikasi sesi: header `x-session-token`; respons `401` memicu
-  `onUnauthorized` (SessionProvider) yang mengarahkan user ke `/auth`.
-- Operasi mutasi mengirim `idempotencyKey` di body sesuai kontrak backend.
-- Shared UI di `@fintech/ui` (`Card`, `formatIdr`, dll.) — dimuat semua
-  zona lewat `transpilePackages`.
+- `@fintech/api-client` is the single path for all HTTP access to the backend.
+- `API_BASE_URL` comes from `NEXT_PUBLIC_API_URL` (default
+  `http://localhost:4000/api`); NestJS uses a global `/api` prefix.
+- Response format: an envelope `{ message?, data?, ... }`; the client unwraps
+  it with type-safe API types, and errors are read from `e?.message`.
+- Session authentication: the `x-session-token` header; a `401` response
+  triggers `onUnauthorized` (SessionProvider), which redirects the user to
+  `/auth`.
+- Mutation operations send `idempotencyKey` in the body, per the backend
+  contract.
+- Shared UI lives in `@fintech/ui` (`Card`, `formatIdr`, etc.) — loaded in
+  all zones via `transpilePackages`.
 
-## Jalankan dari clone
+## Running from a fresh clone
 
 ```bash
-# Backend (repo lain, NestJS) — jalankan dulu, FE fetch ke :4000/api
+# Backend (a separate repo, NestJS) — start it first; the FE fetches :4000/api
 npm install && npm run start:dev   # http://localhost:4000/api
 
-# Frontend (repo ini)
+# Frontend (this repo)
 npm install
-npm run dev          # container di http://localhost:3000
-npm run dev:wallet   # http://localhost:3002 (juga via /wallet/* di :3000)
-npm run dev:credit   # http://localhost:3003 (juga via /credit/* di :3000)
+npm run dev          # container at http://localhost:3000
+npm run dev:wallet   # http://localhost:3002 (also served at /wallet/* on :3000)
+npm run dev:credit   # http://localhost:3003 (also served at /credit/* on :3000)
 ```
 
-Seeding user demo dilakukan dari repo backend (`npm run seed`), bukan dari
-repo frontend. Tanpa backend, halaman & transaksi menampilkan skeleton atau
-pesan error — app tetap hidup.
+Demo user seeding is done from the backend repository (`npm run seed`),
+not from the frontend repo. Without the backend running, pages and
+transactions show skeletons or error messages — the app itself stays up.
 
-### Mapping port ringkas
+### Port mapping at a glance
 
-| Layanan            | Port |
+| Service            | Port |
 |--------------------|------|
 | Backend API        | 4000 |
 | Container (shell)  | 3000 |
@@ -96,48 +100,49 @@ pesan error — app tetap hidup.
 
 ## Build & CI
 
-- Build semua zona (auth/wallet/credit/container): `npm run build`.
+- Build all zones (auth/wallet/credit/container): `npm run build`.
 - CI: `.github/workflows/ci.yml` — Node 22, `npm ci`, `tsc --noEmit` per
-  workspace, `eslint` untuk app yang dipakai, lalu `npm run build`.
+  workspace, `eslint` for the apps that are in use, then `npm run build`.
 
-## Status test
+## Test status
 
-- **Tidak ada test suite otomatis di frontend ini.** Pengaman kualitas di FE
-  adalah `tsc --noEmit` (TypeScript strict, 0 error di semua workspace)
-  dan eslint (0 error). Validasi perilaku uang ada di repo backend
-  (ledger double-entry, idempotency, limit) dan test-nya ada di sana.
-- Pengujian manual 5 menit per halaman terdokumentasi di
-  `docs/demo-script-fe.md`, dengan tangkapan layar di `docs/screenshots/`.
+- **There is no automated test suite in this frontend.** The quality gates on
+  the FE side are `tsc --noEmit` (TypeScript strict, 0 errors across all
+  workspaces) and eslint (0 errors). Behavioral validation for money flows
+  lives in the backend repository (double-entry ledger, idempotency,
+  limits), along with its tests.
+- The 5-minute manual check per page is documented in
+  `docs/demo-script-fe.md`, with screenshots in `docs/screenshots/`.
 
-## Keputusan teknis & trade-off FE
+## Frontend technical decisions & trade-offs
 
-- **Container + rewrites, bukan module federation** — komposisi zona dilakukan
-  server-side oleh `next.config.ts` (`rewrites()`), tanpa loader runtime.
-  Build tiap zone tetap independen; tapi zona child hanya jadi halaman
-  sederhana, bukan feature lengkap.
-- **Halaman inti ada di container, bukan zona** — topup/transfer/qris/
-  tagihan/paylater diletakkan di `apps/container` karena alur mereka saling
-  sambung (session, PIN pad, banner sandbox); menghindari glue code lintas
-  zone untuk alur uang yang harus konsisten.
-- **api-client tipis, dikunci ke kontrak backend** — hanya berisi endpoint
-  yang real ada di backend; tidak ada mock ganda di FE.
-- **State minimal** — hanya `SessionProvider` (user sesi) dan state lokal per
-  halaman; tanpa global store. Mutasi uang selalu disinkronkan langsung ke
-  server, bukan dipercayai dari state lokal.
-- **Sandbox by design** — provider & data simulasi; banner permanen di beranda
-  menandai demo, bukan produk.
+- **Container + rewrites, not module federation** — zone composition is done
+  server-side by `next.config.ts` (`rewrites()`), with no runtime loader.
+  Each zone still builds independently; however, child zones are simple
+  pages rather than full features.
+- **Core pages live in the container, not the zones** — top-up/transfer/QRIS/
+  bills/paylater sit in `apps/container` because their flows are
+  interconnected (session, PIN pad, sandbox banner); this avoids cross-zone
+  glue code for money flows that must stay consistent.
+- **Thin api-client, locked to the backend contract** — it only contains
+  endpoints that actually exist on the backend; no duplicated mocks on the FE.
+- **Minimal state** — only `SessionProvider` (user session) plus local
+  per-page state; no global store. Money mutations are always synced
+  directly with the server, never trusted from local state.
+- **Sandbox by design** — mocked providers and data; a permanent home-page
+  banner marks this as a demo, not a product.
 
-## Known gaps FE
+## Known frontend gaps
 
-- `apps/auth` (port 3001) masih ada di workspaces tapi **tidak dipakai** di
-  alur demo; auth lokal ada di `apps/container/app/auth`.
-- 10 warning eslint non-blocking (hard-reload `window.location` untuk reset
-  sesi, beberapa unused var kecil).
-- Tidak ada test unit/E2E FE; semuanya manual lewat skrip demo.
-- Tanpa optimistik UI — beberapa halaman menunggu respons backend sebelum
-  feedback, terasa lambat saat demo.
-- Alur KYC/unggah data pribadi hanya simulasi; tidak ditargetkan review
-  keamanan berkas asli.
+- `apps/auth` (port 3001) is still in the workspaces but is **unused** in the
+  demo flow; local auth lives in `apps/container/app/auth`.
+- 10 non-blocking eslint warnings (hard-reload `window.location` for session
+  resets, plus a few small unused variables).
+- No FE unit/E2E tests; all behavior is verified manually via the demo script.
+- No optimistic UI — some pages wait for the backend response before giving
+  feedback, which can feel slow during a demo.
+- The KYC/personal-data upload flow is simulated only; it is not designed for
+  review of real document uploads.
 
 ## Tech stack
 

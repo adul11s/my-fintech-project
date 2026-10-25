@@ -1,81 +1,84 @@
-# Skrip Demo Visual — Frontend QUPI (5 menit)
+# Visual Demo Script — QUPI Frontend (5 minutes)
 
-Prasyarat: backend API hidup di `http://localhost:4000/api`, container di
-`:3000` (`npm run dev`), user demo sudah di-seed dari repo backend
-(`npm run seed`).
+Prerequisites: the backend API is running at `http://localhost:4000/api`,
+the container at `:3000` (`npm run dev`), and demo users have been seeded
+from the backend repository (`npm run seed`).
 
-**User demo:**
-| User | Nomor HP   | PIN    | Saldo awal | PayLater                       |
-|------|------------|--------|------------|--------------------------------|
-| Andi | 628123456789 | 123456 | Rp 1.000.000   | aktif, sebagian terpakai, 1 jadwal cicilan 3 bulan |
-| Budi | 628123456790 | 123456 | Rp 500.000    | —                              |
+**Demo users:**
+| User | Phone number | PIN    | Opening balance | PayLater                                        |
+|------|--------------|--------|-----------------|-------------------------------------------------|
+| Andi | 628123456789 | 123456 | Rp 1.000.000    | active, partially used, 1 installment plan (3 months) |
+| Budi | 628123456790 | 123456 | Rp 500.000      | —                                               |
 
-Tangkapan layar tiap langkah tersimpan di `docs/screenshots/`.
+A screenshot is saved for every step in `docs/screenshots/`.
 
 ---
 
-## 1. Beranda (screenshot: `01-beranda.png`)
+## 1. Home (screenshot: `01-beranda.png`)
 
-1. Buka `http://localhost:3000` — bila belum login, dialihkan ke `/auth`.
-2. Login: nomor `628123456789`, PIN `123456` (PIN pad).
-3. Di beranda: banner **"Sandbox / data simulasi"** di atas, kartu saldo
-   (Rp 1.000.000), ringkasan PayLater, 8 tombol aksi cepat, dan 3 transaksi
-   terakhir.
+1. Open `http://localhost:3000` — if not logged in, it redirects to `/auth`.
+2. Log in: phone number `628123456789`, PIN `123456` (PIN pad).
+3. On the home page: the **"Sandbox / simulated data"** banner on top, a
+   balance card (Rp 1.000.000), a PayLater summary, 8 quick-action buttons,
+   and the 3 latest transactions.
 
 ## 2. Top Up (screenshot: `02-topup.png`)
 
-1. Klik **Top Up**.
-2. Isi nominal, mis. `50000`, tombol **Proses**.
-3. Saldo di beranda bertambah, riwayat menampilkan Top Up.
+1. Click **Top Up**.
+2. Enter an amount, e.g. `50000`, and click **Process**.
+3. The balance on the home page increases, and the history shows the Top Up.
 
 ## 3. Transfer (screenshot: `03-transfer.png`)
 
-1. Klik **Transfer**.
-2. Masukkan nomor HP tujuan `628123456790` (Budi) — nama ter-lookup.
-3. Nominal `25000`, PIN `123456`, kirim.
-4. Buka `http://localhost:3000`, login Budi, lihat riwayat masuk.
+1. Click **Transfer**.
+2. Enter the destination phone number `628123456790` (Budi) — the name is
+   looked up.
+3. Amount `25000`, PIN `123456`, send.
+4. Open `http://localhost:3000`, log in as Budi, and check the incoming
+   transaction in the history.
 
-## 4. QRIS pay (screenshot: `04-qris.png`)
+## 4. QRIS payment (screenshot: `04-qris.png`)
 
-1. Klik **QRIS**.
-2. Pilih nominal/meja (data simulasi), tampilkan QR pad.
-3. Pay dengan PIN — status sukses, masuk riwayat sebagai belanja.
+1. Click **QRIS**.
+2. Pick an amount/table (simulated data), show the QR pad.
+3. Pay with the PIN — success status, recorded in history as a purchase.
 
-## 5. Tagihan / bayar bill (screenshot: `05-tagihan.png`)
+## 5. Bills / bill payment (screenshot: `05-tagihan.png`)
 
-1. Klik **Tagihan**.
-2. Pilih provider (PLN/PDAM simulasi), masukkan nomor bill, **Inquiry** —
-   nominal muncul.
-3. **Bayar** dengan PIN — tagihan lunas.
+1. Click **Bills**.
+2. Pick a provider (PLN/PDAM, simulated), enter the bill number, click
+   **Inquiry** — the amount appears.
+3. **Pay** with the PIN — the bill is settled.
 
 ## 6. PayLater (screenshot: `06-paylater.png`)
 
-1. Klik **PayLater**.
-2. Lihat limit, terpakai, sisa. **Checkout** nominal, kirim PIN.
-3. Rencana cicilan 3 bulan tampil di halaman yang sama.
+1. Click **PayLater**.
+2. Review limit, used amount, remaining. **Checkout** an amount, submit the
+   PIN.
+3. The 3-month installment plan appears on the same page.
 
-## 7. Bayar cicilan PayLater (screenshot: lihat `06-paylater.png`)
+## 7. Pay an installment (screenshot: see `06-paylater.png`)
 
-1. Tetap di `/paylater`, pilih tuntas rencana, bayar PIN.
-2. "Terpakai" turun; status kembali lancar.
+1. Stay on `/paylater`, pick the fully outstanding plan, pay with the PIN.
+2. The "used" amount drops; the status returns to healthy.
 
-## 8. Riwayat (screenshot: `08-riwayat.png`)
+## 8. History (screenshot: `08-riwayat.png`)
 
-1. Klik **Riwayat** dari menu.
-2. Semua transaksi muncul: topup, transfer, QRIS, tagihan, cicilan — dengan
-   status (SUCCESS/PENDING) dan waktu.
-3. Badge pending di beranda ikut berkurang.
+1. Click **History** in the menu.
+2. All transactions appear: top-up, transfer, QRIS, bills, installments —
+   with status (SUCCESS/PENDING) and timestamps.
+3. The pending badge on the home page decreases accordingly.
 
-## 9. Profil (screenshot: `09-profil.png`, opsional)
+## 9. Profile (screenshot: `09-profil.png`, optional)
 
-1. Klik **Profil** — status KYC (simulasi), data user.
+1. Click **Profile** — KYC status (simulated), user data.
 
 ---
 
-### Catatan
+### Notes
 
-- Semua angka & nama dari backend stub — bukan uang asli.
-- Jika backend mati: app tetap hidup di `:3000`, tapi seluruh halaman hanya
-  menampilkan skeleton/pesan errors; skrip demo membutuhkan backend.
-- Screenshot disimpan ke `docs/screenshots/*.png`, diregenerasi tiap kali UI
-  berubah bermakna.
+- All figures and names come from the backend stub — not real money.
+- If the backend is down: the app stays up on `:3000`, but every page only
+  shows skeletons/error messages; the demo script requires the backend.
+- Screenshots are saved to `docs/screenshots/*.png` and are regenerated
+  whenever the UI changes meaningfully.
