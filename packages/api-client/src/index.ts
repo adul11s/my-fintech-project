@@ -155,6 +155,7 @@ export async function listHistory(filter: { kind?: string; from?: string; to?: s
 export const qupiEnd = null;
 export const qupi = {
   // ── identity ────────────────────────────────────────────────────────────
+  logout: () => request("POST", "/identity/logout", { sessionToken: getToken() ?? "" }),
   register: (phone: string, name: string) => request<QupiUser>("POST", "/identity/register", { phone, name }),
   requestOtp: (userId: string, purpose = "LOGIN") => request<{ otp?: string }>("POST", "/identity/otp/request", { userId, purpose }),
   verifyOtp: (userId: string, code: string, purpose = "LOGIN") => request<{ success: boolean }>("POST", "/identity/otp/verify", { userId, purpose, code }),

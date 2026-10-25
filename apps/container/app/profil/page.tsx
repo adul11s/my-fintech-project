@@ -14,10 +14,14 @@ export default function ProfilPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const user = session; // info user langsung dari sesi — tidak perlu state terpisah
 
-  const kyc = typeof window !== "undefined" ? (localStorage.getItem(`qupi.kyc.${session?.userId}`) as typeof kycStatus | null) : null;
+  const [kyc, setKyc] = useState<typeof kycStatus | null>(null);
 
   useEffect(() => {
     if (!session) return;
+    // baca status KYC lokal SETELAH mount — hindari hydration mismatch
+    Promise.resolve().then(() => {
+      setKyc((localStorage.getItem(`qupi.kyc.${session.userId}`) as typeof kycStatus | null) ?? null);
+    });
     // saldo via backend (session header)
     qupi.balance().then((r) => setBalance(((r.data ?? {}) as { balance?: number }).balance ?? null)).catch(() => setBalance(null));
     // status KYC asli: GET /identity/kyc/documents
@@ -26,7 +30,8 @@ export default function ProfilPage() {
       .then((j) => {
         const docs = (j.data ?? []) as { status?: string }[];
         const st = docs[0]?.status as typeof kycStatus | undefined;
-        if (st) setKycStatus(st);
+        if (st) { setKycStatus(st); setKyc(st); }
+        void st;
       })
       .catch(() => {});
   }, [session]);
@@ -57,17 +62,21 @@ export default function ProfilPage() {
       }
       const content = btoa(binary);
       await qupi.kycUpload(content, f.name);
+      // status PENDING hanya disimpan setelah upload benar-benar sukses —
+      // kegagalan (413/jaringan) tidak boleh memblokir unggah ulang
+      localStorage.setItem(`qupi.kyc.${session.userId}`, "PENDING");
+      setKycStatus("PENDING");
       showToast("KTP terkirim ke server — status PENDING");
     } catch (e) {
       const err = e as Error & { status?: number };
+      setKycStatus("NONE"); setKyc("NONE");
+      localStorage.removeItem(`qupi.kyc.${session.userId}`);
       if (err.status === 413) {
-        setKycStatus("NONE");
         showToast("KTP terlalu besar — server menolak (413). Kompres lalu unggah ulang.");
       } else {
         showToast(err.message);
       }
     }
-    localStorage.setItem(`qupi.kyc.${session.userId}`, "PENDING");
   };
 
   return (
@@ -75,9 +84,8 @@ export default function ProfilPage() {
       <h1 className="text-lg font-bold">Profil</h1>
       <section className="rounded-2xl border border-white/10 bg-qpi-surface p-4 text-sm">
         <div className="flex justify-between py-1"><span className="text-slate-400">Nama</span><span>{user?.name ?? session.name}</span></div>
-        <div className="flex justify-between py-1"><span className="text-slate-400">No HP</span><span>{"—"}</span></div>
-        <div className="flex justify-between py-1"><span className="text-slate-400">Saldo</span><span>{balance === null ? "…" : formatIdr(balance)}</span></div>
-        <div className="flex justify-between py-1"><span className="text-slate-400">Sesi berlaku</span><span>15 menit idle</span></div>
+                <div className="flex justify-between py-1"><span className="text-slate-400">Saldo</span><span>{balance === null ? "…" : formatIdr(balance)}</span></div>
+        <div className="flex justify-between py-1"><span className="text-slate-400">Sesi berlaku</span><span>hingga idle (server-enforced)</span></div>
       </section>
 
       {/* KYC */}
@@ -109,7 +117,9 @@ export default function ProfilPage() {
 
       <Button
         variant="danger"
-        onClick={() => {
+        onClick={async () => {
+          // revoke token di server, baru bersihkan sesi lokal
+          try { await qupi.logout(); } catch { /* abaikan — tetap logout lokal */ }
           localStorage.removeItem("qupi.session");
           window.location.href = "/auth";
         }}
