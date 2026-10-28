@@ -1,10 +1,14 @@
 # QUPI Apps — QUick Payment Instrument · Fintech Pilot Frontend (Next.js Multi-Zone)
-[![CI](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml)
+[![CI](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/adul11s/qupi-apps/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/adul11s/qupi-apps?color=0e5347)](https://github.com/adul11s/qupi-apps/releases) [![License: MIT](https://img.shields.io/badge/license-MIT-0e5347.svg)](LICENSE)
 
 The **QUPI** frontend pilot (a portfolio project, not a go-live product):
 a Next.js App Router application using a **multi-zone micro-frontend**
 pattern — one container shell that composes child zones via `rewrites()`,
 with no runtime federation.
+
+> **Backend:** [qupi-backend](https://github.com/adul11s/qupi-backend) — NestJS + Prisma service this frontend talks to.
+> **Release:** [v1.0.0](https://github.com/adul11s/qupi-apps/releases/tag/v1.0.0) · **License:** MIT
+> **Verify:** CI badge (lint → typecheck → test → build) · the gap list at the bottom of this file · `packages/api-client` as the only network contract.
 
 > ⚠️ **Sandbox / simulated data.** All data in this application is demo data
 > produced by a backend stub (a mock service provider), not a real financial
